@@ -1,0 +1,1 @@
+feedparser requests google-generativeai gspread oauth2client beautifulsoup4
