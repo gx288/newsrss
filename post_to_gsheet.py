@@ -39,7 +39,8 @@ def get_rss_feed():
     title = entry.title
     description = entry.description
     link = entry.link
-    pubdate = entry.pubdate
+    # Lấy ngày đăng (published hoặc updated, mặc định là chuỗi rỗng nếu không có)
+    pubdate = entry.get('published', entry.get('updated', ''))
     # Lấy hình ảnh từ description (CDATA)
     image_url = None
     soup = BeautifulSoup(description, 'html.parser')
