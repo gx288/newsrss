@@ -1,6 +1,6 @@
 # Prompt for Google Gemini
 PROMPT = """
-Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 300-500 kí tự hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, trung lập, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề. 
+Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 300-500 kí tự hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, trung lập, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề. (đặt trước hashtag).
 """
 
 import feedparser
@@ -18,6 +18,7 @@ SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
 SHEET_NAME = os.getenv("SHEET_NAME", "Sheet1")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+MAX_ARTICLES = 20  # Giới hạn số bài xử lý (có thể điều chỉnh)
 
 # Cấu hình Google Gemini
 genai.configure(api_key=GEMINI_API_KEY)
@@ -38,34 +39,40 @@ def get_rss_feed():
     feed = feedparser.parse(RSS_FEED_URL)
     if not feed.entries:
         print("No entries found in RSS feed")
-        return None
-    entry = feed.entries[0]  # Lấy bài mới nhất
-    title = entry.title
-    description = entry.description
-    link = entry.link
-    # Lấy ngày đăng (published hoặc updated, mặc định là chuỗi rỗng nếu không có)
-    pubdate = entry.get('published', entry.get('updated', ''))
-    # Lấy hình ảnh từ description (CDATA)
-    image_url = None
-    soup = BeautifulSoup(description, 'html.parser')
-    img_tag = soup.find('img')
-    if img_tag and img_tag.get('src'):
-        image_url = img_tag['src']
-    return {"title": title, "description": description, "link": link, "image_url": image_url, "pubdate": pubdate}
+        return []
+    articles = []
+    for entry in feed.entries[:MAX_ARTICLES]:  # Lấy tối đa MAX_ARTICLES
+        title = entry.title
+        description = entry.description
+        link = entry.link
+        # Lấy ngày đăng (published hoặc updated, mặc định là chuỗi rỗng nếu không có)
+        pubdate = entry.get('published', entry.get('updated', ''))
+        # Lấy hình ảnh từ description (CDATA)
+        image_url = None
+        soup = BeautifulSoup(description, 'html.parser')
+        img_tag = soup.find('img')
+        if img_tag and img_tag.get('src'):
+            image_url = img_tag['src']
+        articles.append({"title": title, "description": description, "link": link, "image_url": image_url, "pubdate": pubdate})
+    return articles
 
 def rewrite_content(title, description):
     prompt = f"{PROMPT}\nTiêu đề: {title}\nMô tả: {description}"
-    response = model.generate_content(prompt)
-    # Xử lý để đảm bảo định dạng đúng
-    content = response.text.strip()
-    # Tách tiêu đề và nội dung
-    parts = content.split("👇👇👇")
-    if len(parts) < 2:
-        print("Invalid response format from Gemini")
+    try:
+        response = model.generate_content(prompt)
+        # Xử lý để đảm bảo định dạng đúng
+        content = response.text.strip()
+        # Tách tiêu đề và nội dung
+        parts = content.split("👇👇👇")
+        if len(parts) < 2:
+            print(f"Invalid response format from Gemini for article: {title}")
+            return None, None
+        summary_title = parts[0].strip()
+        summary_content = parts[1].strip()
+        return summary_title, summary_content
+    except Exception as e:
+        print(f"Error generating summary for article {title}: {str(e)}")
         return None, None
-    summary_title = parts[0].strip()
-    summary_content = parts[1].strip()
-    return summary_title, summary_content
 
 def append_to_gsheet(title, summary_title, summary_content, link, image_url, pubdate):
     client = get_gspread_client()
@@ -73,20 +80,22 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
     # Ghi dữ liệu vào sheet
     row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate]
     sheet.append_row(row)
-    print("Appended to Google Sheet successfully!")
+    print(f"Appended article '{title}' to Google Sheet successfully!")
 
 def main():
     # Lấy dữ liệu từ RSS
-    article = get_rss_feed()
-    if not article:
+    articles = get_rss_feed()
+    if not articles:
+        print("No articles to process")
         return
-    # Viết lại nội dung bằng Gemini
-    summary_title, summary_content = rewrite_content(article["title"], article["description"])
-    if not summary_title or not summary_content:
-        print("Failed to generate summary")
-        return
-    # Ghi vào Google Sheet
-    append_to_gsheet(article["title"], summary_title, summary_content, article["link"], article["image_url"], article["pubdate"])
+    for article in articles:
+        # Viết lại nội dung bằng Gemini
+        summary_title, summary_content = rewrite_content(article["title"], article["description"])
+        if not summary_title or not summary_content:
+            print(f"Skipping article '{article['title']}' due to summary generation failure")
+            continue
+        # Ghi vào Google Sheet
+        append_to_gsheet(article["title"], summary_title, summary_content, article["link"], article["image_url"], article["pubdate"])
 
 if __name__ == "__main__":
     main()
