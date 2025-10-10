@@ -21,11 +21,11 @@ GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
 # Cấu hình Google Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-# Debug: In danh sách model khả dụng
-print("Available models:")
-for m in genai.list_models():
-    print(m.name)
-model = genai.GenerativeModel('gemini-1.5-pro')  # Chuyển sang gemini-1.5-pro
+# Debug: Uncomment nếu cần in danh sách model
+# print("Available models:")
+# for m in genai.list_models():
+#     print(m.name)
+model = genai.GenerativeModel('gemini-2.5-flash')  # Model ổn định, nhanh cho tóm tắt
 
 # Cấu hình Google Sheets
 def get_gspread_client():
