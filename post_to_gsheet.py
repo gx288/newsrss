@@ -1,6 +1,6 @@
 # Prompt for Google Gemini
 PROMPT = """
-Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 500-1000 kí tự phù hợp với facebook. hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, đầy đủ ý, nội dung phù hợp với tiêu đề, giải quyết được tình trạng, câu hỏi trong tiêu đề, làm thỏa mãn người đọc, trung lập, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề. 
+Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 500-1000 kí tự phù hợp với Facebook. Hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, đầy đủ ý, nội dung phù hợp với tiêu đề, giải quyết được tình trạng, câu hỏi trong tiêu đề, làm thỏa mãn người đọc, trung lập, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề.
 """
 
 import feedparser
@@ -18,7 +18,6 @@ SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
 SHEET_NAME = os.getenv("SHEET_NAME", "Sheet1")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
-MAX_ARTICLES = 10  # Xử lý tối đa 20 bài
 
 # Cấu hình Google Gemini
 genai.configure(api_key=GEMINI_API_KEY)
@@ -65,8 +64,8 @@ def get_rss_feed():
     # Lấy danh sách link đã xử lý từ Google Sheet
     existing_links = get_existing_links()
     articles = []
-    for i, entry in enumerate(feed.entries[:MAX_ARTICLES], 1):  # Lấy tối đa MAX_ARTICLES
-        print(f"Đang kiểm tra bài {i}/{min(MAX_ARTICLES, len(feed.entries))}: {entry.title}")
+    for i, entry in enumerate(feed.entries, 1):  # Lặp qua tất cả entries
+        print(f"Đang kiểm tra bài {i}: {entry.title}")
         link = entry.link
         # Bỏ qua nếu link đã tồn tại
         if link in existing_links:
@@ -85,7 +84,7 @@ def get_rss_feed():
         if img_tag and img_tag.get('src'):
             image_url = img_tag['src']
         articles.append({"title": title, "description": description, "link": link, "image_url": image_url, "pubdate": pubdate})
-        print(f"Đã thêm bài {i}: {title} vào danh sách xử lý.")
+        print(f"Đã thêm bài {len(articles)}: {title} vào danh sách xử lý.")
     print(f"Hoàn tất lấy RSS feed: {len(articles)} bài mới sẽ được xử lý.")
     return articles
 
