@@ -1,1 +1,6 @@
-feedparser requests google-generativeai gspread oauth2client beautifulsoup4
+feedparser
+requests
+google-generativeai
+gspread
+oauth2client
+beautifulsoup4
