@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import re
 
 # Cấu hình
-RSS_FEED_URL = "https://suckhoedoisong.vn/y-hoc-co-truyen.htm"
+RSS_FEED_URL = "https://suckhoedoisong.vn/y-hoc-co-truyen.rss"
 SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
 SHEET_NAME = "SuckhoeDoisong"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
