@@ -6,7 +6,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from bs4 import BeautifulSoup
 import re
-import time
 
 # Cấu hình
 RSS_FEED_URL = "https://suckhoedoisong.vn/y-hoc-co-truyen.rss"
@@ -16,7 +15,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
 # Danh sách model theo thứ tự ưu tiên
-MODEL_PRIORITY = ["gemini-2.5-flash", "gemini-1.5-pro"]
+MODEL_PRIORITY = ["gemini-2.5-flash", "gemini-1.0-pro"]
 
 # Prompt cho Google Gemini
 PROMPT = """
@@ -99,33 +98,28 @@ def get_rss_feed():
 def rewrite_content(title, description):
     print(f"Bắt đầu tóm tắt bài: {title}")
     prompt = f"{PROMPT}\nTiêu đề: {title}\nMô tả: {description}"
-    max_retries = 3
-    retry_delay = 60  # Delay 60 giây
     for model_name in MODEL_PRIORITY:
         print(f"Thử tóm tắt với model: {model_name}")
-        model = genai.GenerativeModel(model_name)
-        for attempt in range(max_retries):
-            try:
-                response = model.generate_content(prompt)
-                content = response.text.strip()
-                parts = content.split("👇👇👇")
-                if len(parts) < 2:
-                    print(f"Định dạng phản hồi từ {model_name} không hợp lệ cho bài: {title}")
-                    return None, None
-                summary_title = parts[0].strip()
-                summary_content = parts[1].strip()
-                print(f"Hoàn tất tóm tắt bài: {title} với model {model_name}")
-                return summary_title, summary_content
-            except Exception as e:
-                if "429" in str(e) and "Quota exceeded" in str(e):
-                    print(f"Quota exceeded for model {model_name}, bài '{title}'. Attempt {attempt + 1}/{max_retries}. Retrying in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                    retry_delay += 10  # Tăng delay cho lần thử tiếp theo
-                else:
-                    print(f"Lỗi khi tóm tắt bài {title} với model {model_name}: {str(e)}")
-                    break  # Thoát vòng lặp retry nếu lỗi không phải 429
-        print(f"Hết quota hoặc lỗi với model {model_name} cho bài '{title}'. Thử model tiếp theo...")
-    print(f"Hết số lần thử và model cho bài '{title}'.")
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            content = response.text.strip()
+            parts = content.split("👇👇👇")
+            if len(parts) < 2:
+                print(f"Định dạng phản hồi từ {model_name} không hợp lệ cho bài: {title}")
+                return None, None
+            summary_title = parts[0].strip()
+            summary_content = parts[1].strip()
+            print(f"Hoàn tất tóm tắt bài: {title} với model {model_name}")
+            return summary_title, summary_content
+        except Exception as e:
+            if "429" in str(e) and "Quota exceeded" in str(e):
+                print(f"Quota exceeded for model {model_name}, bài '{title}'. Chuyển sang model tiếp theo...")
+                continue
+            else:
+                print(f"Lỗi khi tóm tắt bài {title} với model {model_name}: {str(e)}")
+                continue
+    print(f"Hết model khả dụng cho bài '{title}'. Kiểm tra danh sách model tại https://ai.google.dev/gemini-api/docs/models")
     return None, None
 
 def append_to_gsheet(title, summary_title, summary_content, link, image_url, pubdate):
