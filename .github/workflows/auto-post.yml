@@ -1,4 +1,4 @@
-name: Auto Post to Google Sheet from RSS
+name: 24h to Sheet1
 on:
   schedule:
     - cron: '2 * * * *' # Chạy hàng ngày lúc 8:00 AM VN (1:00 AM UTC)
