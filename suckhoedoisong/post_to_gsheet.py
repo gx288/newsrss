@@ -15,7 +15,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
 # Danh sách model theo thứ tự ưu tiên
-MODEL_PRIORITY = ["gemini-2.5-flash", "gemini-1.0-pro"]
+MODEL_PRIORITY = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-1.0-pro"]
 
 # Prompt cho Google Gemini
 PROMPT = """
