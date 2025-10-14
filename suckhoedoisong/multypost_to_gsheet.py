@@ -148,10 +148,31 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
     print(f"Bắt đầu ghi bài '{title}' vào trang tính {sheet_name}...")
     try:
         client = get_gspread_client()
-        sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        spreadsheet = client.open_by_key(SHEET_ID)
+
+        # Kiểm tra xem sheet có tồn tại không, nếu không thì tạo mới
+        try:
+            sheet = spreadsheet.worksheet(sheet_name)
+            print(f"Đã tìm thấy trang tính {sheet_name}.")
+        except gspread.exceptions.WorksheetNotFound:
+            print(f"Trang tính {sheet_name} không tồn tại, đang tạo mới...")
+            sheet = spreadsheet.add_worksheet(title=sheet_name, rows=100, cols=10)
+            print(f"Đã tạo trang tính {sheet_name}.")
+
+        # Kiểm tra xem sheet có tiêu đề chưa
+        header = ["Original Title", "Summary", "Link", "Image URL", "Publish Date"]
+        existing_data = sheet.get_all_values()
+        if not existing_data:  # Nếu sheet trống, thêm tiêu đề
+            print(f"Trang tính {sheet_name} trống, thêm tiêu đề...")
+            sheet.insert_row(header, 1)
+            print(f"Đã thêm tiêu đề: {header}")
+
+        # Chuẩn bị dữ liệu để ghi
         row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate]
-        sheet.append_row(row)
-        print(f"Hoàn tất ghi bài '{title}' vào trang tính {sheet_name}.")
+
+        # Chèn dữ liệu vào hàng thứ 2 (ngay dưới tiêu đề)
+        sheet.insert_row(row, 2)
+        print(f"Hoàn tất ghi bài '{title}' vào hàng thứ 2 của trang tính {sheet_name}.")
         global processed_count
         processed_count += 1
     except Exception as e:
