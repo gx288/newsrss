@@ -82,11 +82,9 @@ def get_rss_feed(rss_url, sheet_name):
         return []
     existing_links = get_existing_links(sheet_name)
     articles = []
-    for i, entry in enumerate(feed.entries, 1):
-        print(f"Đang kiểm tra bài {i}: {entry.title}")
+    for i, entry in enumerate(feed.entries, 1):        
         link = entry.link
-        if link in existing_links:
-            print(f"Bỏ qua bài đã xử lý: {entry.title}")
+        if link in existing_links:            
             global skipped_count
             skipped_count += 1
             continue
