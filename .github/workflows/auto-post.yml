@@ -26,4 +26,4 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
-        run: python post_to_gsheet.py
+        run: python -u 24h.py
