@@ -160,19 +160,27 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
             print(f"Đã tạo trang tính {sheet_name}.")
 
         # Kiểm tra xem sheet có tiêu đề chưa
-        header = ["Original Title", "Summary", "Link", "Image URL", "Publish Date"]
+        header = ["Original Title", "Summary", "Link", "Image URL", "Publish Date", "Ảnh", "Ngày"]
         existing_data = sheet.get_all_values()
         if not existing_data:  # Nếu sheet trống, thêm tiêu đề
             print(f"Trang tính {sheet_name} trống, thêm tiêu đề...")
             sheet.insert_row(header, 1)
             print(f"Đã thêm tiêu đề: {header}")
 
-        # Chuẩn bị dữ liệu để ghi
-        row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate]
+        # Chuẩn bị dữ liệu để ghi (không ghi dữ liệu vào cột Ảnh và Ngày)
+        row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate, "", ""]
 
-        # Chèn dữ liệu vào hàng thứ 2 (ngay dưới tiêu đề)
+        # Chèn dữ liệu vào hàng thứ 2
         sheet.insert_row(row, 2)
-        print(f"Hoàn tất ghi bài '{title}' vào hàng thứ 2 của trang tính {sheet_name}.")
+        print(f"Hoàn tất ghi dữ liệu bài '{title}' vào hàng thứ 2 của trang tính {sheet_name}.")
+
+        # Áp dụng công thức cho cột Ảnh (F) và Ngày (G) ở hàng 2
+        image_formula = '=IF(D2<>"",IMAGE(D2),"")'
+        date_formula = '=IF(E2<>"",DATE(MID(E2,FIND(",",E2)+9,4),MATCH(MID(E2,FIND(",",E2)+5,3),{"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"},0),MID(E2,FIND(",",E2)+2,2)),"")'
+        sheet.update('F2', image_formula, value_input_option='USER_ENTERED')
+        sheet.update('G2', date_formula, value_input_option='USER_ENTERED')
+        print(f"Đã áp dụng công thức cho cột Ảnh và Ngày ở hàng 2 của trang tính {sheet_name}.")
+
         global processed_count
         processed_count += 1
     except Exception as e:
