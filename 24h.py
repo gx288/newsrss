@@ -14,6 +14,19 @@ SHEET_NAME = os.getenv("SHEET_NAME", "Sheet1")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
+# Prompt cho Google Gemini
+PROMPT = """
+Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 500-1000 kí tự phù hợp với Facebook. Hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, đầy đủ ý, nội dung phù hợp với tiêu đề, giải quyết được tình trạng, câu hỏi trong tiêu đề, làm thỏa mãn người đọc, trung lập, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề.
+"""
+
+# Prompt kiểm tra quảng cáo
+AD_CHECK_PROMPT = """
+Dựa trên tiêu đề và mô tả sau, hãy phân tích và trả lời chỉ với "Có" nếu đây là bài viết quảng cáo, quảng bá thương hiệu, sản phẩm hoặc có dấu hiệu khuyến mãi (như giới thiệu sản phẩm, ưu đãi, liên hệ mua hàng), hoặc "Không" nếu đây là nội dung thông tin y tế, sức khỏe trung lập. Không giải thích thêm, chỉ trả lời "Có" hoặc "Không".
+
+Tiêu đề: {title}
+Mô tả: {description}
+"""
+
 # Danh sách model ưu tiên
 MODEL_PRIORITY = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-1.0-pro"]
 
@@ -77,19 +90,6 @@ def get_rss_feed():
     print(f"Hoàn tất lấy RSS feed: {len(articles)} bài mới sẽ được xử lý.")
     return articles
 
-def is_advertisement(title, description):
-    """Kiểm tra xem bài viết có phải là quảng cáo không"""
-    ad_keywords = [
-        r'\b(sản phẩm|thương hiệu|sản phẩm|quảng cáo|khuyến mãi|giảm giá|ưu đãi|mua ngay|đặt hàng)\b',
-        r'\b(giới thiệu|sử dụng|chất lượng cao|uy tín|hiệu quả nhất)\b.*(thương hiệu|sản phẩm)',
-        r'\b(độc quyền|chỉ có tại|liên hệ ngay)\b'
-    ]
-    content = (title + " " + description).lower()
-    for pattern in ad_keywords:
-        if re.search(pattern, content, re.IGNORECASE):
-            return True
-    return False
-
 def get_gemini_model():
     """Thử các model theo thứ tự ưu tiên"""
     for model_name in MODEL_PRIORITY:
@@ -97,12 +97,28 @@ def get_gemini_model():
             print(f"Thử sử dụng model: {model_name}")
             model = genai.GenerativeModel(model_name)
             # Thử một yêu cầu nhỏ để kiểm tra quota
-            model.generate_content("Test")
+            test_response = model.generate_content("Test")
             print(f"Sử dụng model: {model_name}")
             return model
         except Exception as e:
             print(f"Model {model_name} không khả dụng: {str(e)}")
     raise Exception("Không có model nào khả dụng")
+
+def is_advertisement(title, description):
+    """Kiểm tra quảng cáo bằng AI"""
+    print(f"Kiểm tra quảng cáo cho bài: {title}")
+    check_prompt = AD_CHECK_PROMPT.format(title=title, description=description)
+    try:
+        model = get_gemini_model()
+        response = model.generate_content(check_prompt)
+        result = response.text.strip().upper()
+        is_ad = result == "CÓ"
+        print(f"Kết quả kiểm tra quảng cáo: {'Có' if is_ad else 'Không'}")
+        return is_ad
+    except Exception as e:
+        print(f"Lỗi khi kiểm tra quảng cáo: {str(e)}")
+        # Mặc định không phải quảng cáo nếu lỗi
+        return False
 
 def rewrite_content(title, description):
     print(f"Bắt đầu tóm tắt bài: {title}")
