@@ -173,7 +173,7 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
         print(f"Hoàn tất ghi dữ liệu bài '{title}' vào hàng thứ 2 của trang tính {sheet_name}.")
 
         # Áp dụng công thức cho cột Ảnh (F) và Ngày (G) ở hàng 2
-        image_formula = '=IF(D2<>"",IMAGE(D2),"")'
+        image_formula = '=IF(D2<>"";IMAGE(D2);"")'
         date_formula = '=IF(E2<>"",DATE(MID(E2,FIND(",",E2)+9,4),MATCH(MID(E2,FIND(",",E2)+5,3),{"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"},0),MID(E2,FIND(",",E2)+2,2)),"")'
         sheet.update('F2', image_formula, value_input_option='USER_ENTERED')
         sheet.update('G2', date_formula, value_input_option='USER_ENTERED')
