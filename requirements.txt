@@ -4,3 +4,5 @@ google-generativeai
 gspread
 oauth2client
 beautifulsoup4
+packaging
+gspread==5.12.0
