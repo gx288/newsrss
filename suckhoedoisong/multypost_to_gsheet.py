@@ -14,7 +14,45 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
 # Danh sách model theo thứ tự ưu tiên
-MODEL_PRIORITY = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-1.0-pro"]
+MODEL_PRIORITY = [
+    # ===== 1. MẠNH NHẤT - THÔNG MINH CAO NHẤT (Pro series) =====
+    "gemini-2.5-pro",                          # Thông minh nhất hiện tại
+    "gemini-2.5-pro-preview-06-05",            # Preview gần nhất của Pro
+    "gemini-2.5-pro-preview-05-06",            # Preview Pro
+    "gemini-2.5-pro-preview-03-25",            # Preview Pro cũ hơn
+    "gemini-pro-latest",                       # Luôn trỏ Pro mới nhất (rất ổn định)
+
+    # ===== 2. CÂN BẰNG: NHANH + THÔNG MINH (Flash 2.5) =====
+    "gemini-2.5-flash",                        # TỐI ƯU: thông minh tốt + quota cao
+    "gemini-2.5-flash-preview-09-2025",         # Preview mới nhất
+    "gemini-2.5-flash-preview-05-20",          # Preview Flash
+    "gemini-flash-latest",                     # Luôn Flash mới nhất (rất nên dùng)
+
+    # ===== 3. NHẸ HƠN, NHANH HƠN (Flash Lite) =====
+    "gemini-2.5-flash-lite",                   # Nhẹ, nhanh, quota cao
+    "gemini-2.5-flash-lite-preview-09-2025",   # Preview Lite mới
+    "gemini-2.5-flash-lite-preview-06-17",     # Preview Lite
+    "gemini-flash-lite-latest",                # Luôn Lite mới nhất
+
+    # ===== 4. CŨ HƠN (2.0 series - vẫn dùng được) =====
+    "gemini-2.0-pro-exp",                      # Pro 2.0 thử nghiệm
+    "gemini-2.0-pro-exp-02-05",                # Pro 2.0 exp
+    "gemini-2.0-flash",                        # Flash 2.0 ổn định
+    "gemini-2.0-flash-001",                    # Flash 2.0 001
+    "gemini-2.0-flash-lite",                   # Flash Lite 2.0
+    "gemini-2.0-flash-lite-001",               # Flash Lite 001
+
+    # ===== 5. NHẸ NHẤT (Gemma series - nhỏ, nhanh, ít thông minh) =====
+    "gemma-3-27b-it",                          # Mạnh nhất trong Gemma
+    "gemma-3-12b-it",
+    "gemma-3-4b-it",
+    "gemma-3-1b-it",
+    "gemma-3n-e4b-it",
+    "gemma-3n-e2b-it",
+
+    # ===== 6. CŨ & KHÔNG NÊN DÙNG (chỉ để fallback cuối) =====
+    "gemini-1.0-pro",                          # Rất cũ, quota thấp
+]
 
 # Prompt cho Google Gemini
 PROMPT = """
