@@ -3,7 +3,8 @@ on:
   schedule:
     - cron: '2 * * * *' # Chạy hàng ngày lúc 8:00 AM VN (1:00 AM UTC)
   workflow_dispatch: # Cho phép chạy thủ công
-
+permissions:
+  contents: write  # Thêm quyền write để GITHUB_TOKEN có thể push
 jobs:
   post-to-gsheet:
     runs-on: ubuntu-latest
@@ -21,9 +22,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run -u script
+      - name: Run script and log run history
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
-        run: python -u 24h.py
+        run: |
+          # Chạy script chính
+          python -u 24h.py
+
+          # Thêm thông tin lần chạy vào đầu file run_log.txt (giới hạn 10000 dòng)
+          LOG_FILE="run_log.txt"
+          RUN_TIME=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
+          SUMMARY="Run at $RUN_TIME | Processed: $processed_count | Skipped (dup): $skipped_count | Ads: $ad_count | Errors: $error_count"
+
+          if [ -f "$LOG_FILE" ]; then
+            # Lấy nội dung cũ, cắt xuống còn 9999 dòng nếu vượt quá, rồi thêm dòng mới lên đầu
+            tail -n 9999 "$LOG_FILE" > "${LOG_FILE}.tmp"
+            echo "$SUMMARY" > "$LOG_FILE"
+            cat "${LOG_FILE}.tmp" >> "$LOG_FILE"
+            rm "${LOG_FILE}.tmp"
+          else
+            # Nếu file chưa tồn tại, tạo mới với dòng đầu tiên
+            echo "$SUMMARY" > "$LOG_FILE"
+          fi
+
+          # Commit và push nếu có thay đổi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$LOG_FILE"
+          git commit -m "Update run log: $RUN_TIME" || echo "No changes to commit"
+          git push
