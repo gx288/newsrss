@@ -14,7 +14,7 @@ base_url = "https://khoahoc.tv/yhoc"
 num_threads = 15
 output_dir = "khoahoctv"
 output_file = os.path.join(output_dir, "yhoc_khoahoc_tv.rss")
-max_pages = 500
+max_pages = 50
 items_per_full_page = 20
 # ===============================================
 
