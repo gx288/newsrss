@@ -1,7 +1,8 @@
 import feedparser
 import os
 import json
-import google.generativeai as genai  # SDK mới chính thức: pip install google-genai
+from google import genai  # Import đúng cho package google-genai mới
+from google.genai import types  # Để dùng types nếu cần (tùy chọn)
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from bs4 import BeautifulSoup
@@ -13,21 +14,21 @@ RSS_SHEET_NAME = "RSS"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
-# Danh sách model ưu tiên (tháng 12/2025 - stable & preview mới nhất)
+# Danh sách model ưu tiên (cập nhật tháng 12/2025)
 MODEL_PRIORITY = [
-    "gemini-2.5-pro",           # Mạnh nhất hiện tại, reasoning tốt
-    "gemini-2.5-flash",         # Cân bằng tốc độ + chất lượng, quota cao
-    "gemini-2.5-flash-lite",    # Nhẹ nhất, tiết kiệm quota
+    "gemini-2.5-pro",           # Mạnh nhất hiện tại
+    "gemini-2.5-flash",         # Cân bằng tốc độ + chất lượng
+    "gemini-2.5-flash-lite",    # Nhẹ và tiết kiệm quota
     "gemini-2.0-flash",         # Fallback ổn định
 ]
 
-# Prompt cho Gemini
+# Prompt
 PROMPT = """
 Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 500-1000 kí tự phù hợp với Facebook. Hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, đầy đủ ý, nội dung phù hợp với tiêu đề, giải quyết được tình trạng, câu hỏi trong tiêu đề, làm thỏa mãn người đọc, trung thực, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề.
 """
 
-# Cấu hình Gemini SDK mới
-genai.configure(api_key=GEMINI_API_KEY)
+# Tạo client (API key từ env GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Biến theo dõi
 processed_count = 0
@@ -69,7 +70,7 @@ def get_existing_links(sheet_name):
     try:
         client = get_gspread_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        links = sheet.col_values(3)[1:]  # Cột 3 là Link
+        links = sheet.col_values(3)[1:]  # Cột 3: Link
         print(f"Đã lấy {len(links)} link cũ.")
         return set(links)
     except gspread.exceptions.WorksheetNotFound:
@@ -127,8 +128,10 @@ def rewrite_content(title, description):
     for model_name in MODEL_PRIORITY:
         print(f"Thử model: {model_name}")
         try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
             content = response.text.strip()
             parts = content.split("👇👇👇")
             if len(parts) < 2:
@@ -142,8 +145,8 @@ def rewrite_content(title, description):
             if "quota" in str(e).lower() or "429" in str(e):
                 print(f"Quota exceeded cho {model_name}. Thử model tiếp...")
                 continue
-            elif "not found" in str(e).lower():
-                print(f"Model {model_name} không tồn tại. Bỏ qua.")
+            elif "not found" in str(e).lower() or "404" in str(e):
+                print(f"Model {model_name} không tồn tại. Bỏ qua...")
                 continue
             else:
                 print(f"Lỗi khác với {model_name}: {str(e)}")
@@ -154,8 +157,8 @@ def rewrite_content(title, description):
 def append_to_gsheet(title, summary_title, summary_content, link, image_url, pubdate, sheet_name):
     print(f"Bắt đầu ghi bài '{title}' vào {sheet_name}...")
     try:
-        client = get_gspread_client()
-        spreadsheet = client.open_by_key(SHEET_ID)
+        client_gs = get_gspread_client()
+        spreadsheet = client_gs.open_by_key(SHEET_ID)
         try:
             sheet = spreadsheet.worksheet(sheet_name)
         except gspread.exceptions.WorksheetNotFound:
