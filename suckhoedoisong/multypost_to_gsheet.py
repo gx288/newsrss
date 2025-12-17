@@ -16,17 +16,21 @@ GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
 # Danh sách model ưu tiên (cập nhật tháng 12/2025)
 MODEL_PRIORITY = [
-    "gemini-2.5-pro",              # Mạnh nhất hiện tại trong danh sách (Gemini 2.5 Pro)
-    "gemini-2.5-flash",            # Cân bằng tốt nhất: tốc độ + chất lượng cao
-    "gemini-2.5-flash-lite",       # Phiên bản nhẹ, tiết kiệm quota/tokens nhất trong 2.5 series
-    "gemini-2.0-flash",            # Fallback rất ổn định, phổ biến và mạnh
-    "gemini-2.0-flash-lite",
-    "gemini-3-flash-preview",
-    "gemini-3-flash",
-    "gemini-3-flash-lite",
-    
-# Phiên bản lite của 2.0, nhanh và tiết kiệm
+    "gemini-3-pro-preview",        # Mạnh nhất: Thế hệ 3 bản Pro, ưu tiên cho tác vụ cực khó
+    "gemini-3-flash-preview",      # Nhanh & Mạnh: Thế hệ 3 bản Flash (hiện tại trong ảnh là bản Preview)
+    "gemini-3-flash",              # Bản chính thức của dòng 3 Flash (nếu có trong hệ thống của bạn)
+    "gemini-3-flash-lite",         # Bản tiết kiệm nhất của thế hệ 3
+    "gemini-2.5-pro",              # Model Pro ổn định nhất của thế hệ 2.5
+    "gemini-2.5-pro-preview-tts",  # Bản 2.5 Pro tối ưu cho chuyển đổi văn bản thành giọng nói
+    "gemini-2.5-flash",            # Cân bằng tốt nhất dòng 2.5
+    "gemini-2.5-flash-preview",    # Bản thử nghiệm của 2.5 Flash
+    "gemini-2.5-flash-preview-tts",# Bản 2.5 Flash tối ưu cho giọng nói
+    "gemini-2.5-flash-lite",       # Bản nhẹ, tiết kiệm nhất dòng 2.5
+    "gemini-2.5-flash-lite-preview", # Bản preview của dòng lite 2.5
+    "gemini-2.0-flash",            # Model dòng 2.0 rất ổn định và phổ biến
+    "gemini-2.0-flash-lite",       # Bản nhẹ nhất của dòng 2.0
 ]
+
 # Prompt
 PROMPT = """
 Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 500-1000 kí tự phù hợp với Facebook. Hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, đầy đủ ý, nội dung phù hợp với tiêu đề, giải quyết được tình trạng, câu hỏi trong tiêu đề, làm thỏa mãn người đọc, trung thực, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề.
