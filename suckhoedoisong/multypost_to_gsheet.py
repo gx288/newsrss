@@ -20,6 +20,7 @@ MODEL_PRIORITY = [
     "gemini-2.5-flash",         # Cân bằng tốc độ + chất lượng
     "gemini-2.5-flash-lite",    # Nhẹ và tiết kiệm quota
     "gemini-2.0-flash",         # Fallback ổn định
+    "gemma-3-27b",
 ]
 
 # Prompt
