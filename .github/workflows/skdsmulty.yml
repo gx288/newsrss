@@ -1,26 +1,24 @@
 name: ProcessMultipleRSS
-
 on:
   schedule:
-    - cron: '2 * * * *' # Chạy hàng ngày lúc 8:00 AM VN (1:00 AM UTC)
-  workflow_dispatch: # Cho phép chạy thủ công
-
+    - cron: '2 * * * *'  # Chạy hàng giờ lúc phút 02 (tức khoảng 7-9h sáng VN tùy ngày)
+  workflow_dispatch:  # Cho phép chạy thủ công
 jobs:
   post-to-gsheet:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Cập nhật lên v4 mới nhất
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.12'  # Nâng lên Python 3.12 để tương thích tốt hơn với google-genai
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install feedparser google-generativeai oauth2client beautifulsoup4 packaging gspread==5.12.0
+          pip install feedparser google-genai oauth2client beautifulsoup4 gspread==5.12.0
 
       - name: Run script
         env:
