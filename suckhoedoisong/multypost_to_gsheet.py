@@ -20,7 +20,9 @@ MODEL_PRIORITY = [
     "gemini-2.5-flash",            # Cân bằng tốt nhất: tốc độ + chất lượng cao
     "gemini-2.5-flash-lite",       # Phiên bản nhẹ, tiết kiệm quota/tokens nhất trong 2.5 series
     "gemini-2.0-flash",            # Fallback rất ổn định, phổ biến và mạnh
-    "gemini-2.0-flash-lite",       # Phiên bản lite của 2.0, nhanh và tiết kiệm
+    "gemini-2.0-flash-lite",
+    "gemini-3-flash-preview",
+# Phiên bản lite của 2.0, nhanh và tiết kiệm
 ]
 # Prompt
 PROMPT = """
