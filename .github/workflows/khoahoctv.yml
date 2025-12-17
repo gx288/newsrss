@@ -31,6 +31,15 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Add file (dù mới hay cũ)
           git add khoahoctv/yhoc_khoahoc_tv.rss
-          git diff --quiet && echo "No changes" || git commit -m "Update RSS Y học KhoaHoc.tv [auto]"
-          git push
+          
+          # Kiểm tra xem có thay đổi gì không (bao gồm file mới)
+          if git status --porcelain | grep -q "."; then
+            git commit -m "Auto update RSS Y học KhoaHoc.tv [$(date +'%Y-%m-%d %H:%M:%S')]"
+            git push
+            echo "RSS file đã được commit và push thành công!"
+          else
+            echo "Không có thay đổi nào (có thể script lỗi hoặc trang không tải được)."
+          fi
