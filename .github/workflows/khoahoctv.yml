@@ -1,0 +1,36 @@
+name: Generate KhoaHoc.tv Y Học RSS
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # Chạy mỗi 6 tiếng (có thể đổi thành hàng ngày: '0 0 * * *')
+  workflow_dispatch:        # Cho phép chạy thủ công từ GitHub
+
+jobs:
+  scrape-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Run scraper script
+        run: |
+          python -u khoahoctv/taorsskhoahoc.py
+
+      - name: Commit and push RSS file
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add khoahoctv/yhoc_khoahoc_tv.rss
+          git diff --quiet && echo "No changes" || git commit -m "Update RSS Y học KhoaHoc.tv [auto]"
+          git push
