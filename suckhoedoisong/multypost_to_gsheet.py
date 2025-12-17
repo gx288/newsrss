@@ -1,11 +1,11 @@
 import feedparser
 import os
 import json
-import google.generativeai as genai
+import google.genai as genai  # Package mới chính thức (thay thế google.generativeai đã deprecated)
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from bs4 import BeautifulSoup
-import re
+import gspread.exceptions
 
 # Cấu hình
 SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
@@ -13,28 +13,22 @@ RSS_SHEET_NAME = "RSS"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
-# Danh sách model theo thứ tự ưu tiên (cập nhật một phần dựa trên thông tin mới nhất tháng 12/2025)
+# Danh sách model ưu tiên (cập nhật mới nhất tháng 12/2025 từ tài liệu chính thức Google)
 MODEL_PRIORITY = [
-    # ===== 1. MẠNH NHẤT - GEMINI 3 SERIES (Mới nhất, thông minh cao nhất) =====
-    "gemini-3-pro",                  # Model mạnh nhất hiện tại (nếu có sẵn qua API)
-    "gemini-3-pro-preview",          # Preview nếu có
-    # ===== 2. GEMINI 2.5 SERIES (Vẫn rất mạnh và ổn định) =====
-    "gemini-2.5-pro",                # Stable Pro mạnh nhất hiện tại
-    "gemini-2.5-pro-preview",        # Preview mới nhất của 2.5 Pro
-    "gemini-2.5-pro-latest",         # Alias latest Pro
-    "gemini-2.5-flash",              # Flash ổn định, nhanh + thông minh tốt
-    "gemini-2.5-flash-preview",      # Preview Flash mới nhất
-    "gemini-2.5-flash-lite",         # Lite nhanh và tiết kiệm
-    # ===== 3. CŨ HƠN NHƯNG VẪN DÙNG ĐƯỢC =====
+    # ===== 1. MẠNH NHẤT - GEMINI 3 SERIES (Preview mới nhất) =====
+    "gemini-3-pro-preview",           # Gemini 3 Pro preview - thông minh nhất hiện tại
+    "gemini-3-pro-image-preview",
+
+    # ===== 2. GEMINI 2.5 SERIES (Stable & Preview) =====
+    "gemini-2.5-pro",                 # Stable Pro - mạnh mẽ cho reasoning & coding
+    "gemini-2.5-flash",               # Stable Flash - cân bằng tốc độ + chất lượng
+    "gemini-2.5-flash-lite",          # Stable Lite - nhanh và tiết kiệm nhất
+    "gemini-2.5-pro-preview-tts",
+    "gemini-2.5-flash-preview-09-2025",
+
+    # ===== 3. GEMINI 2.0 SERIES (Fallback ổn định) =====
     "gemini-2.0-flash",
-    "gemini-2.0-pro-exp",
-    # ===== 4. GEMMA SERIES (Open models, nhẹ hơn) =====
-    "gemma-3-27b-it",
-    "gemma-3-12b-it",
-    "gemma-3-4b-it",
-    # ===== 5. FALLBACK CŨ =====
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
+    "gemini-2.0-flash-lite",
 ]
 
 # Prompt cho Google Gemini
@@ -42,7 +36,7 @@ PROMPT = """
 Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 500-1000 kí tự phù hợp với Facebook. Hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, đầy đủ ý, nội dung phù hợp với tiêu đề, giải quyết được tình trạng, câu hỏi trong tiêu đề, làm thỏa mãn người đọc, trung thực, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề.
 """
 
-# Cấu hình Google Gemini
+# Cấu hình Google GenAI (package mới)
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Biến theo dõi tổng quát
@@ -50,7 +44,6 @@ processed_count = 0
 skipped_count = 0
 error_count = 0
 
-# Cấu hình Google Sheets
 def get_gspread_client():
     print("Bắt đầu cấu hình Google Sheets client...")
     creds_dict = json.loads(GOOGLE_SHEETS_CREDENTIALS)
@@ -60,7 +53,6 @@ def get_gspread_client():
     return client
 
 def get_rss_feeds():
-    """Lấy danh sách RSS feed và tên trang tính từ sheet RSS"""
     print("Bắt đầu lấy danh sách RSS feed từ Google Sheet...")
     try:
         client = get_gspread_client()
@@ -70,7 +62,7 @@ def get_rss_feeds():
             print("Không tìm thấy dữ liệu RSS feed trong sheet RSS.")
             return []
         feeds = []
-        for row in data[1:]: # Bỏ header
+        for row in data[1:]:
             rss_url = row[0].strip()
             sheet_name = row[1].strip() if len(row) > 1 else ""
             if rss_url and sheet_name:
@@ -83,14 +75,16 @@ def get_rss_feeds():
         return []
 
 def get_existing_links(sheet_name):
-    """Lấy danh sách link đã lưu trong Google Sheet"""
     print(f"Bắt đầu lấy danh sách link đã xử lý từ trang tính {sheet_name}...")
     try:
         client = get_gspread_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        links = sheet.col_values(3)[1:] # Bỏ header
+        links = sheet.col_values(3)[1:]  # Cột Link (cột 3)
         print(f"Đã lấy {len(links)} link từ trang tính {sheet_name}.")
         return set(links)
+    except gspread.exceptions.WorksheetNotFound:
+        print(f"Trang tính {sheet_name} chưa tồn tại, coi như chưa có link nào xử lý.")
+        return set()
     except Exception as e:
         print(f"Lỗi khi lấy link từ trang tính {sheet_name}: {str(e)}")
         return set()
@@ -131,8 +125,7 @@ def get_rss_feed(rss_url, sheet_name):
             "pubdate": pubdate
         })
         print(f"Đã thêm bài mới: {title}")
-        # Giới hạn tối đa 5 bài mới mỗi RSS feed
-        if len(articles) >= 5:
+        if len(articles) >= 5:  # Giới hạn tối đa 5 bài mới mỗi RSS
             print(f"Đã đạt giới hạn 5 bài mới cho RSS {rss_url}. Dừng lấy thêm.")
             break
     print(f"Hoàn tất lấy RSS feed {rss_url}: {len(articles)} bài mới sẽ được xử lý.")
@@ -149,20 +142,23 @@ def rewrite_content(title, description):
             content = response.text.strip()
             parts = content.split("👇👇👇")
             if len(parts) < 2:
-                print(f"Định dạng phản hồi từ {model_name} không hợp lệ cho bài: {title}")
-                return None, None
+                print(f"Định dạng phản hồi từ {model_name} không hợp lệ (thiếu 👇👇👇). Thử model khác...")
+                continue
             summary_title = parts[0].strip()
             summary_content = parts[1].strip()
             print(f"Hoàn tất tóm tắt bài: {title} với model {model_name}")
             return summary_title, summary_content
         except Exception as e:
-            if "429" in str(e) and "Quota exceeded" in str(e):
-                print(f"Quota exceeded for model {model_name}, bài '{title}'. Chuyển sang model tiếp theo...")
+            if "quota" in str(e).lower() or "429" in str(e):
+                print(f"Quota exceeded cho model {model_name}. Chuyển sang model tiếp theo...")
+                continue
+            elif "not found" in str(e).lower() or "404" in str(e):
+                print(f"Model {model_name} không tồn tại hoặc không hỗ trợ generateContent. Bỏ qua...")
                 continue
             else:
-                print(f"Lỗi khi tóm tắt bài {title} với model {model_name}: {str(e)}")
+                print(f"Lỗi khác khi tóm tắt với model {model_name}: {str(e)}")
                 continue
-    print(f"Hết model khả dụng cho bài '{title}'.")
+    print(f"Hết model khả dụng cho bài '{title}'. Không thể tóm tắt.")
     return None, None
 
 def append_to_gsheet(title, summary_title, summary_content, link, image_url, pubdate, sheet_name):
@@ -176,25 +172,24 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
         except gspread.exceptions.WorksheetNotFound:
             print(f"Trang tính {sheet_name} không tồn tại, đang tạo mới...")
             sheet = spreadsheet.add_worksheet(title=sheet_name, rows=100, cols=10)
-            print(f"Đã tạo trang tính {sheet_name}.")
+            print(f"Đã tạo trang tính mới {sheet_name}.")
         header = ["Original Title", "Summary", "Link", "Image URL", "Publish Date", "Ảnh", "Ngày"]
         existing_data = sheet.get_all_values()
         if not existing_data:
             print(f"Trang tính {sheet_name} trống, thêm tiêu đề...")
             sheet.insert_row(header, 1)
-            print(f"Đã thêm tiêu đề: {header}")
         row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate, "", ""]
         sheet.insert_row(row, 2)
-        print(f"Hoàn tất ghi dữ liệu bài '{title}' vào hàng thứ 2 của trang tính {sheet_name}.")
-        image_formula = '=IF(D2<>"";IMAGE(D2);"")'
-        date_formula = '=IF(E2<>"";DATE(MID(E2;FIND(",";E2)+9;4);MATCH(MID(E2;FIND(",";E2)+5;3);{"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"};0);MID(E2;FIND(",";E2)+2;2));"")'
-        sheet.update('F2', image_formula, value_input_option='USER_ENTERED')
-        sheet.update('G2', date_formula, value_input_option='USER_ENTERED')
-        print(f"Đã áp dụng công thức cho cột Ảnh và Ngày ở hàng 2.")
+        print(f"Đã ghi dữ liệu bài '{title}' vào hàng 2.")
+        image_formula = '=IF(D2<>""; IMAGE(D2); "")'
+        date_formula = '=IF(E2<>""; DATE(MID(E2; FIND(","; E2)+9; 4); MATCH(MID(E2; FIND(","; E2)+5; 3); {"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"}; 0); MID(E2; FIND(","; E2)+2; 2)); "")'
+        sheet.update('F2', [[image_formula]], value_input_option='USER_ENTERED')
+        sheet.update('G2', [[date_formula]], value_input_option='USER_ENTERED')
+        print(f"Đã áp dụng công thức cho cột Ảnh và Ngày.")
         global processed_count
         processed_count += 1
     except Exception as e:
-        print(f"Lỗi khi ghi bài '{title}' vào trang tính {sheet_name}: {str(e)}")
+        print(f"Lỗi khi ghi vào Google Sheet: {str(e)}")
         global error_count
         error_count += 1
 
@@ -224,10 +219,10 @@ def main():
                 article["title"], summary_title, summary_content,
                 article["link"], article["image_url"], article["pubdate"], sheet_name
             )
-    print("\n=== TỔNG QUÁT ===")
+    print("\n=== TỔNG KẾT ===")
     print(f"Tổng số bài xử lý thành công: {processed_count}")
-    print(f"Tổng số bài bỏ qua do trùng: {skipped_count}")
-    print(f"Tổng số bài lỗi (tóm tắt thất bại): {error_count}")
+    print(f"Tổng số bài bỏ qua (trùng): {skipped_count}")
+    print(f"Tổng số bài lỗi: {error_count}")
     print("=== KẾT THÚC SCRIPT ===")
 
 if __name__ == "__main__":
