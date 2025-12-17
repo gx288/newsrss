@@ -22,6 +22,9 @@ MODEL_PRIORITY = [
     "gemini-2.0-flash",            # Fallback rất ổn định, phổ biến và mạnh
     "gemini-2.0-flash-lite",
     "gemini-3-flash-preview",
+    "gemini-3-flash",
+    "gemini-3-flash-lite",
+    
 # Phiên bản lite của 2.0, nhanh và tiết kiệm
 ]
 # Prompt
