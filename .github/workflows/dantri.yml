@@ -1,8 +1,6 @@
 name: Dantri to sheet
 
 on:
-  schedule:
-    - cron: '2 2 * * *' # Chạy hàng ngày lúc 8:00 AM VN (1:00 AM UTC)
   workflow_dispatch: # Cho phép chạy thủ công
 
 jobs:
