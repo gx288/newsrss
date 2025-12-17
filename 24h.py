@@ -29,43 +29,27 @@ Mô tả: {description}
 
 # Danh sách model ưu tiên
 MODEL_PRIORITY = [
-    # ===== 1. MẠNH NHẤT - THÔNG MINH CAO NHẤT (Pro series) =====
-    "gemini-2.5-pro",                          # Thông minh nhất hiện tại
-    "gemini-2.5-pro-preview-06-05",            # Preview gần nhất của Pro
-    "gemini-2.5-pro-preview-05-06",            # Preview Pro
-    "gemini-2.5-pro-preview-03-25",            # Preview Pro cũ hơn
-    "gemini-pro-latest",                       # Luôn trỏ Pro mới nhất (rất ổn định)
+    # --- Thế hệ 3 (Mới nhất, thông minh nhất) ---
+    "gemini-3-pro-preview",        # Đỉnh cao về suy luận và đa phương thức
+    "gemini-3-flash",              # Tốc độ cực nhanh, hiệu năng vượt trội
+    "gemini-3-flash-preview",      
+    "gemini-3-flash-lite",         # Tiết kiệm nhất thế hệ 3
 
-    # ===== 2. CÂN BẰNG: NHANH + THÔNG MINH (Flash 2.5) =====
-    "gemini-2.5-flash",                        # TỐI ƯU: thông minh tốt + quota cao
-    "gemini-2.5-flash-preview-09-2025",         # Preview mới nhất
-    "gemini-2.5-flash-preview-05-20",          # Preview Flash
-    "gemini-flash-latest",                     # Luôn Flash mới nhất (rất nên dùng)
+    # --- Thế hệ 2.5 (Ổn định và hiện đại) ---
+    "gemini-2.5-pro",              
+    "gemini-2.5-flash",            
+    "gemini-2.5-flash-lite",       
 
-    # ===== 3. NHẸ HƠN, NHANH HƠN (Flash Lite) =====
-    "gemini-2.5-flash-lite",                   # Nhẹ, nhanh, quota cao
-    "gemini-2.5-flash-lite-preview-09-2025",   # Preview Lite mới
-    "gemini-2.5-flash-lite-preview-06-17",     # Preview Lite
-    "gemini-flash-lite-latest",                # Luôn Lite mới nhất
+    # --- Thế hệ 2.0 (Phổ biến, độ trễ thấp) ---
+    "gemini-2.0-flash",            
+    "gemini-2.0-flash-lite",       
 
-    # ===== 4. CŨ HƠN (2.0 series - vẫn dùng được) =====
-    "gemini-2.0-pro-exp",                      # Pro 2.0 thử nghiệm
-    "gemini-2.0-pro-exp-02-05",                # Pro 2.0 exp
-    "gemini-2.0-flash",                        # Flash 2.0 ổn định
-    "gemini-2.0-flash-001",                    # Flash 2.0 001
-    "gemini-2.0-flash-lite",                   # Flash Lite 2.0
-    "gemini-2.0-flash-lite-001",               # Flash Lite 001
+    # --- Thế hệ 1.5 (Bền bỉ, cửa sổ ngữ cảnh lớn) ---
+    "gemini-1.5-pro",              # Cực kỳ mạnh mẽ với context window lên đến 2M tokens
+    "gemini-1.5-flash",            # Tốc độ cao, chi phí thấp, rất ổn định cho sản xuất
 
-    # ===== 5. NHẸ NHẤT (Gemma series - nhỏ, nhanh, ít thông minh) =====
-    "gemma-3-27b-it",                          # Mạnh nhất trong Gemma
-    "gemma-3-12b-it",
-    "gemma-3-4b-it",
-    "gemma-3-1b-it",
-    "gemma-3n-e4b-it",
-    "gemma-3n-e2b-it",
-
-    # ===== 6. CŨ & KHÔNG NÊN DÙNG (chỉ để fallback cuối) =====
-    "gemini-1.0-pro",                          # Rất cũ, quota thấp
+    # --- Thế hệ 1.0 (Nguyên bản) ---
+    "gemini-1.0-pro",              # Model đời đầu, thường dùng làm fallback cuối cùng
 ]
 
 # Cấu hình Google Gemini
