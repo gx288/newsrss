@@ -2,7 +2,7 @@ name: ProcessMultipleRSS
 on:
   schedule:
     - cron: '2 * * * *'  # Chạy mỗi giờ vào phút thứ 2
-  workflow_dispatch:   # Cho phép chạy thủ công
+  workflow_dispatch:
 jobs:
   post-to-gsheet:
     runs-on: ubuntu-latest
@@ -13,7 +13,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'  # Python 3.12 để tương thích tốt nhất với google-genai
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
