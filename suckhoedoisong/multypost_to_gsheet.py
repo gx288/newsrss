@@ -13,45 +13,28 @@ RSS_SHEET_NAME = "RSS"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
-# Danh sách model theo thứ tự ưu tiên
+# Danh sách model theo thứ tự ưu tiên (cập nhật một phần dựa trên thông tin mới nhất tháng 12/2025)
 MODEL_PRIORITY = [
-    # ===== 1. MẠNH NHẤT - THÔNG MINH CAO NHẤT (Pro series) =====
-    "gemini-2.5-pro",                          # Thông minh nhất hiện tại
-    "gemini-2.5-pro-preview-06-05",            # Preview gần nhất của Pro
-    "gemini-2.5-pro-preview-05-06",            # Preview Pro
-    "gemini-2.5-pro-preview-03-25",            # Preview Pro cũ hơn
-    "gemini-pro-latest",                       # Luôn trỏ Pro mới nhất (rất ổn định)
-
-    # ===== 2. CÂN BẰNG: NHANH + THÔNG MINH (Flash 2.5) =====
-    "gemini-2.5-flash",                        # TỐI ƯU: thông minh tốt + quota cao
-    "gemini-2.5-flash-preview-09-2025",         # Preview mới nhất
-    "gemini-2.5-flash-preview-05-20",          # Preview Flash
-    "gemini-flash-latest",                     # Luôn Flash mới nhất (rất nên dùng)
-
-    # ===== 3. NHẸ HƠN, NHANH HƠN (Flash Lite) =====
-    "gemini-2.5-flash-lite",                   # Nhẹ, nhanh, quota cao
-    "gemini-2.5-flash-lite-preview-09-2025",   # Preview Lite mới
-    "gemini-2.5-flash-lite-preview-06-17",     # Preview Lite
-    "gemini-flash-lite-latest",                # Luôn Lite mới nhất
-
-    # ===== 4. CŨ HƠN (2.0 series - vẫn dùng được) =====
-    "gemini-2.0-pro-exp",                      # Pro 2.0 thử nghiệm
-    "gemini-2.0-pro-exp-02-05",                # Pro 2.0 exp
-    "gemini-2.0-flash",                        # Flash 2.0 ổn định
-    "gemini-2.0-flash-001",                    # Flash 2.0 001
-    "gemini-2.0-flash-lite",                   # Flash Lite 2.0
-    "gemini-2.0-flash-lite-001",               # Flash Lite 001
-
-    # ===== 5. NHẸ NHẤT (Gemma series - nhỏ, nhanh, ít thông minh) =====
-    "gemma-3-27b-it",                          # Mạnh nhất trong Gemma
+    # ===== 1. MẠNH NHẤT - GEMINI 3 SERIES (Mới nhất, thông minh cao nhất) =====
+    "gemini-3-pro",                  # Model mạnh nhất hiện tại (nếu có sẵn qua API)
+    "gemini-3-pro-preview",          # Preview nếu có
+    # ===== 2. GEMINI 2.5 SERIES (Vẫn rất mạnh và ổn định) =====
+    "gemini-2.5-pro",                # Stable Pro mạnh nhất hiện tại
+    "gemini-2.5-pro-preview",        # Preview mới nhất của 2.5 Pro
+    "gemini-2.5-pro-latest",         # Alias latest Pro
+    "gemini-2.5-flash",              # Flash ổn định, nhanh + thông minh tốt
+    "gemini-2.5-flash-preview",      # Preview Flash mới nhất
+    "gemini-2.5-flash-lite",         # Lite nhanh và tiết kiệm
+    # ===== 3. CŨ HƠN NHƯNG VẪN DÙNG ĐƯỢC =====
+    "gemini-2.0-flash",
+    "gemini-2.0-pro-exp",
+    # ===== 4. GEMMA SERIES (Open models, nhẹ hơn) =====
+    "gemma-3-27b-it",
     "gemma-3-12b-it",
     "gemma-3-4b-it",
-    "gemma-3-1b-it",
-    "gemma-3n-e4b-it",
-    "gemma-3n-e2b-it",
-
-    # ===== 6. CŨ & KHÔNG NÊN DÙNG (chỉ để fallback cuối) =====
-    "gemini-1.0-pro",                          # Rất cũ, quota thấp
+    # ===== 5. FALLBACK CŨ =====
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
 ]
 
 # Prompt cho Google Gemini
@@ -87,7 +70,7 @@ def get_rss_feeds():
             print("Không tìm thấy dữ liệu RSS feed trong sheet RSS.")
             return []
         feeds = []
-        for row in data[1:]:  # Bỏ header
+        for row in data[1:]: # Bỏ header
             rss_url = row[0].strip()
             sheet_name = row[1].strip() if len(row) > 1 else ""
             if rss_url and sheet_name:
@@ -105,7 +88,7 @@ def get_existing_links(sheet_name):
     try:
         client = get_gspread_client()
         sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
-        links = sheet.col_values(3)[1:]  # Bỏ header
+        links = sheet.col_values(3)[1:] # Bỏ header
         print(f"Đã lấy {len(links)} link từ trang tính {sheet_name}.")
         return set(links)
     except Exception as e:
@@ -120,17 +103,15 @@ def get_rss_feed(rss_url, sheet_name):
         return []
     existing_links = get_existing_links(sheet_name)
     articles = []
-    for i, entry in enumerate(feed.entries, 1):        
+    for entry in feed.entries:
         link = entry.link
-        if link in existing_links:            
+        if link in existing_links:
             global skipped_count
             skipped_count += 1
             continue
         title = entry.title
         description = entry.description
-        # Lấy ngày đăng
         pubdate = entry.get('pubDate', entry.get('published', entry.get('updated', '')))
-        # Lấy URL hình ảnh
         image_url = None
         if hasattr(entry, 'enclosures') and entry.enclosures:
             for enclosure in entry.enclosures:
@@ -149,7 +130,11 @@ def get_rss_feed(rss_url, sheet_name):
             "image_url": image_url,
             "pubdate": pubdate
         })
-        print(f"Đã thêm bài {len(articles)}: {title} vào danh sách xử lý.")
+        print(f"Đã thêm bài mới: {title}")
+        # Giới hạn tối đa 5 bài mới mỗi RSS feed
+        if len(articles) >= 5:
+            print(f"Đã đạt giới hạn 5 bài mới cho RSS {rss_url}. Dừng lấy thêm.")
+            break
     print(f"Hoàn tất lấy RSS feed {rss_url}: {len(articles)} bài mới sẽ được xử lý.")
     return articles
 
@@ -177,7 +162,7 @@ def rewrite_content(title, description):
             else:
                 print(f"Lỗi khi tóm tắt bài {title} với model {model_name}: {str(e)}")
                 continue
-    print(f"Hết model khả dụng cho bài '{title}'. Kiểm tra danh sách model tại https://ai.google.dev/gemini-api/docs/models")
+    print(f"Hết model khả dụng cho bài '{title}'.")
     return None, None
 
 def append_to_gsheet(title, summary_title, summary_content, link, image_url, pubdate, sheet_name):
@@ -185,8 +170,6 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
     try:
         client = get_gspread_client()
         spreadsheet = client.open_by_key(SHEET_ID)
-
-        # Kiểm tra xem sheet có tồn tại không, nếu không thì tạo mới
         try:
             sheet = spreadsheet.worksheet(sheet_name)
             print(f"Đã tìm thấy trang tính {sheet_name}.")
@@ -194,29 +177,20 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
             print(f"Trang tính {sheet_name} không tồn tại, đang tạo mới...")
             sheet = spreadsheet.add_worksheet(title=sheet_name, rows=100, cols=10)
             print(f"Đã tạo trang tính {sheet_name}.")
-
-        # Kiểm tra xem sheet có tiêu đề chưa
         header = ["Original Title", "Summary", "Link", "Image URL", "Publish Date", "Ảnh", "Ngày"]
         existing_data = sheet.get_all_values()
-        if not existing_data:  # Nếu sheet trống, thêm tiêu đề
+        if not existing_data:
             print(f"Trang tính {sheet_name} trống, thêm tiêu đề...")
             sheet.insert_row(header, 1)
             print(f"Đã thêm tiêu đề: {header}")
-
-        # Chuẩn bị dữ liệu để ghi (không ghi dữ liệu vào cột Ảnh và Ngày)
         row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate, "", ""]
-
-        # Chèn dữ liệu vào hàng thứ 2
         sheet.insert_row(row, 2)
         print(f"Hoàn tất ghi dữ liệu bài '{title}' vào hàng thứ 2 của trang tính {sheet_name}.")
-
-        # Áp dụng công thức cho cột Ảnh (F) và Ngày (G) ở hàng 2
         image_formula = '=IF(D2<>"";IMAGE(D2);"")'
         date_formula = '=IF(E2<>"";DATE(MID(E2;FIND(",";E2)+9;4);MATCH(MID(E2;FIND(",";E2)+5;3);{"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"};0);MID(E2;FIND(",";E2)+2;2));"")'
         sheet.update('F2', image_formula, value_input_option='USER_ENTERED')
         sheet.update('G2', date_formula, value_input_option='USER_ENTERED')
-        print(f"Đã áp dụng công thức cho cột Ảnh và Ngày ở hàng 2 của trang tính {sheet_name}.")
-
+        print(f"Đã áp dụng công thức cho cột Ảnh và Ngày ở hàng 2.")
         global processed_count
         processed_count += 1
     except Exception as e:
