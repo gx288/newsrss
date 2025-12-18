@@ -24,7 +24,7 @@ jobs:
 
       - name: Run script and log run history
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY2 }}
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SHEET_NAME: ${{ secrets.SHEET_NAME }}
         run: |
