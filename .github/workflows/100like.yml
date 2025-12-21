@@ -2,8 +2,8 @@ name: 100like Register & Trial
 
 on:
   workflow_dispatch:   # Chạy thủ công
-  # schedule:
-  #   - cron: '0 8 * * *'  # Bỏ comment để chạy tự động hàng ngày (8h UTC ~ 15h VN)
+  schedule:
+    - cron: '0 8 * * *'  # Bỏ comment để chạy tự động hàng ngày (8h UTC ~ 15h VN)
 
 jobs:
   run:
@@ -23,7 +23,7 @@ jobs:
           pip install selenium pandas
 
       - name: Run script
-        run: python 100like/register_and_trial.py
+        run: python -u 100like/register_and_trial.py
 
       - name: Commit passwords.txt nếu có thay đổi
         run: |
