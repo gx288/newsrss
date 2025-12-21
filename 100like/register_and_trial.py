@@ -3,6 +3,7 @@ import random
 import string
 import time
 import pandas as pd
+import urllib.parse   # Thêm dòng này vào phần import đầu file
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -78,13 +79,17 @@ try:
     print("Đang đọc dữ liệu từ Google Sheet - Sheet: 'Trang tính1' - Cột M (lấy dòng dưới cùng có nội dung)...")
     sheet_id = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
     sheet_name = "Trang tính1"  # Tên sheet chính xác
-    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+    
+    import urllib.parse  # Thêm dòng này nếu chưa có (đặt ở đầu file nếu cần)
+    encoded_sheet_name = urllib.parse.quote(sheet_name)
+    
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={encoded_sheet_name}"
     
     try:
         df = pd.read_csv(csv_url)
         print(f"Đọc thành công sheet '{sheet_name}' - Có {len(df)} dòng, {len(df.columns)} cột")
         
-        col_m = df.iloc[:, 12].dropna().astype(str).str.strip()  # Cột M là index 12 (A=0, B=1, ..., M=12)
+        col_m = df.iloc[:, 12].dropna().astype(str).str.strip()  # Cột M là index 12 (A=0, ..., M=12)
         col_m = col_m[col_m != '']
         if col_m.empty:
             raise Exception("Cột M trong sheet 'Trang tính1' không có dữ liệu nào")
@@ -92,7 +97,8 @@ try:
         print(f"Lấy thành công ID/Link từ cột M (dưới lên): {post_link}")
     except Exception as sheet_error:
         raise Exception(f"Không đọc được Google Sheet - {str(sheet_error)}. "
-                        "Kiểm tra: Sheet phải public (Anyone with the link > Viewer), tên sheet đúng 'Trang tính1'.")
+                        "Kiểm tra: Sheet phải public (Anyone with the link > Viewer). "
+                        "Nếu vẫn lỗi, thử rename sheet thành không dấu và không space (ví dụ: TrangTinh1).")
 
     print("Đang điền ID/Link vào ô input...")
     input_field = driver.find_element(By.CSS_SELECTOR, "input[placeholder='ID Hoặc Link Bài Viết']")
