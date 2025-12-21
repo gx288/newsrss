@@ -1,15 +1,17 @@
-name: Run 100like Register & Trial
+name: 100like Register & Trial
 
 on:
-  workflow_dispatch:  # Chạy manual
+  workflow_dispatch:   # Chạy thủ công
   # schedule:
-  #   - cron: '0 0 * * *'  # Mỗi ngày lúc 0h UTC
+  #   - cron: '0 8 * * *'  # Bỏ comment để chạy tự động hàng ngày (8h UTC ~ 15h VN)
 
 jobs:
-  run-script:
+  run:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -17,15 +19,16 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install selenium pandas
 
       - name: Run script
         run: python 100like/register_and_trial.py
 
-      - name: Commit passwords.txt nếu thay đổi
+      - name: Commit passwords.txt nếu có thay đổi
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git add 100like/passwords.txt
-          git commit -m "Update passwords after run" || echo "No changes"
-          git push || echo "No push needed"
+          git commit -m "Cập nhật tài khoản mới + kết quả trial" || echo "Không có thay đổi"
+          git push || echo "Không cần push"
