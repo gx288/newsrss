@@ -75,22 +75,24 @@ try:
     time.sleep(5)
     print("Vào trang trial thành công")
 
-    print("Đang đọc dữ liệu từ Google Sheet (cột K, lấy dòng dưới cùng có nội dung)...")
+    print("Đang đọc dữ liệu từ Google Sheet - Sheet: 'Trang tính1' - Cột M (lấy dòng dưới cùng có nội dung)...")
     sheet_id = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
-    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid=0"
+    sheet_name = "Trang tính1"  # Tên sheet chính xác
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
     
     try:
         df = pd.read_csv(csv_url)
-        col_k = df.iloc[:, 10].dropna().astype(str).str.strip()
-        col_k = col_k[col_k != '']
-        if col_k.empty:
-            raise Exception("Cột K không có dữ liệu nào")
-        post_link = col_k.iloc[-1]
-        print(f"Lấy thành công ID/Link từ cột K (dưới cùng): {post_link}")
+        print(f"Đọc thành công sheet '{sheet_name}' - Có {len(df)} dòng, {len(df.columns)} cột")
+        
+        col_m = df.iloc[:, 12].dropna().astype(str).str.strip()  # Cột M là index 12 (A=0, B=1, ..., M=12)
+        col_m = col_m[col_m != '']
+        if col_m.empty:
+            raise Exception("Cột M trong sheet 'Trang tính1' không có dữ liệu nào")
+        post_link = col_m.iloc[-1]  # Lấy dòng dưới cùng có nội dung
+        print(f"Lấy thành công ID/Link từ cột M (dưới lên): {post_link}")
     except Exception as sheet_error:
         raise Exception(f"Không đọc được Google Sheet - {str(sheet_error)}. "
-                        "Nguyên nhân phổ biến: Sheet chưa public (Anyone with the link can view). "
-                        "Hãy vào Sheet → Share → đổi thành Anyone with the link → Viewer.")
+                        "Kiểm tra: Sheet phải public (Anyone with the link > Viewer), tên sheet đúng 'Trang tính1'.")
 
     print("Đang điền ID/Link vào ô input...")
     input_field = driver.find_element(By.CSS_SELECTOR, "input[placeholder='ID Hoặc Link Bài Viết']")
