@@ -3,7 +3,7 @@ name: 100like Register & Trial
 on:
   workflow_dispatch:   # Chạy thủ công
   schedule:
-    - cron: '0 8 * * *'  # Bỏ comment để chạy tự động hàng ngày (8h UTC ~ 15h VN)
+    - cron: '0 8,16 * * *'  # Bỏ comment để chạy tự động hàng ngày (8h UTC ~ 15h VN)
 
 jobs:
   run:
