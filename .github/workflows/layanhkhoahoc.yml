@@ -2,7 +2,7 @@ name: Lay Anh Khoahoc.tv - Daily Run
 
 on:
   schedule:
-    - cron: '0 1 * * *'       # Mỗi ngày lúc 8h sáng Việt Nam (1h UTC)
+    - cron: '0 23 * * *'       # Mỗi ngày lúc 8h sáng Việt Nam (1h UTC)
   workflow_dispatch:          # Cho phép chạy thủ công
 
 jobs:
