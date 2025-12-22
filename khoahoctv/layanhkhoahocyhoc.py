@@ -10,7 +10,7 @@ import os
 # === CẤU HÌNH ===
 SERVICE_ACCOUNT_FILE = 'khoahoctv/credentials.json'
 SPREADSHEET_ID = '14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo'
-SHEET_NAME = 'Trang tính1'
+SHEET_NAME = 'Khoahocyhoc'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 # =================
 
