@@ -173,17 +173,44 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
         except gspread.exceptions.WorksheetNotFound:
             print(f"Tạo sheet mới: {sheet_name}")
             sheet = spreadsheet.add_worksheet(title=sheet_name, rows=100, cols=10)
+
+        # Kiểm tra và thêm header nếu sheet còn trống
         header = ["Original Title", "Summary", "Link", "Image URL", "Publish Date", "Ảnh", "Ngày"]
         if not sheet.get_all_values():
-            sheet.insert_row(header, 1)
-        row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate, "", ""]
-        sheet.insert_row(row, 2)
-        image_formula = '=IF(D2<>""; IMAGE(D2); "")'
-        date_formula = '=IF(E2<>""; DATE(MID(E2; FIND(","; E2)+9; 4); MATCH(MID(E2; FIND(","; E2)+5; 3); {"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"}; 0); MID(E2; FIND(","; E2)+2; 2)); "")'
-        sheet.update('F2', [[image_formula]], value_input_option='USER_ENTERED')
-        sheet.update('G2', [[date_formula]], value_input_option='USER_ENTERED')
+            sheet.append_row(header)
+
+        # Dòng dữ liệu chính
+        row = [
+            title,
+            summary_title + "\n👇👇👇\n" + summary_content,
+            link,
+            image_url,
+            pubdate,
+            "",  # Cột F (Ảnh) sẽ để công thức
+            ""   # Cột G (Ngày) sẽ để công thức
+        ]
+
+        # Thêm dòng mới vào cuối sheet
+        sheet.append_row(row, value_input_option='RAW')
+
+        # Lấy số dòng hiện tại sau khi append (để tính vị trí công thức)
+        row_count = len(sheet.get_all_values())
+        image_cell = f'F{row_count}'
+        date_cell = f'G{row_count}'
+
+        # Công thức cho cột Ảnh (F)
+        image_formula = f'=IF(D{row_count}<>""; IMAGE(D{row_count}); "")'
+
+        # Công thức cho cột Ngày (G) - parse ngày từ pubdate kiểu "Day, DD Mon YYYY ..."
+        date_formula = f'=IF(E{row_count}<>""; DATE(MID(E{row_count}; FIND(","; E{row_count})+9; 4); MATCH(MID(E{row_count}; FIND(","; E{row_count})+5; 3); {{"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"}}; 0); MID(E{row_count}; FIND(","; E{row_count})+2; 2)); "")'
+
+        # Ghi công thức vào cột F và G của dòng mới
+        sheet.update(image_cell, [[image_formula]], value_input_option='USER_ENTERED')
+        sheet.update(date_cell, [[date_formula]], value_input_option='USER_ENTERED')
+
         global processed_count
         processed_count += 1
+
     except Exception as e:
         print(f"Lỗi ghi sheet: {str(e)}")
         global error_count
