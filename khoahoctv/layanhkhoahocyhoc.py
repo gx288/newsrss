@@ -1,175 +1,139 @@
 import time
 import re
-import json
 from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-# For bypassing Cloudflare, you may need to install undetected_chromedriver
-# pip install undetected-chromedriver
 import undetected_chromedriver as uc
 import gspread
 from google.oauth2.service_account import Credentials
+import os
 
-# Setup Google Sheets API
-# Instructions:
-# 1. Go to Google Cloud Console, create a project, enable Google Sheets API.
-# 2. Create a service account, download the JSON key file.
-# 3. Share the Google Sheet with the service account email (edit access).
-# Set the path to your service account JSON key
-SERVICE_ACCOUNT_FILE = 'path/to/your/service-account-key.json'  # Replace with your file path
+# === CẤU HÌNH ===
+# File credentials.json sẽ được tạo tự động từ Secret trên GitHub Actions
+# Nếu chạy local thì bạn đặt file credentials.json cùng thư mục khoahoctv/
+SERVICE_ACCOUNT_FILE = 'khoahoctv/credentials.json'
 
-# Scopes for Google Sheets
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-
-# Authenticate and open the spreadsheet
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-client = gspread.authorize(creds)
-
-# Spreadsheet ID from the URL
 SPREADSHEET_ID = '14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo'
 SHEET_NAME = 'Khoahocyhoc'
 
-# Open the sheet
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+# =================
+
+# Kiểm tra và tạo credentials từ biến môi trường nếu có (GitHub Actions)
+if os.getenv('GOOGLE_SHEETS_CREDENTIALS'):
+    # GitHub Actions: tạo file tạm từ secret
+    os.makedirs('khoahoctv', exist_ok=True)
+    with open(SERVICE_ACCOUNT_FILE, 'w', encoding='utf-8') as f:
+        f.write(os.getenv('GOOGLE_SHEETS_CREDENTIALS'))
+
+# Authenticate
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+client = gspread.authorize(creds)
 sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
 
-# Assume column C is links (index 3, since A=1, B=2, C=3)
-# Column D is images (index 4)
-# Row 1 is headers
+def get_image_src(img_tag):
+    """Hỗ trợ lazy-loading: src, data-src, data-lazy-src, srcset..."""
+    src = (
+        img_tag.get('src') or
+        img_tag.get('data-src') or
+        img_tag.get('data-lazy-src') or
+        img_tag.get('data-original')
+    )
+    if not src:
+        srcset = img_tag.get('srcset', '')
+        match = re.search(r'https?://[^\s,]+', srcset)
+        if match:
+            src = match.group(0)
+    return src
 
-def is_cloudflare_protected(html):
-    return 'cloudflare' in html.lower() or 'cf-browser-verification' in html
+def is_ad_image(src):
+    if not src:
+        return True
+    src_lower = src.lower()
+    return any(k in src_lower for k in ['ad', 'banner', 'ads', 'sponsor', 'logo', 'facebook', 'share'])
 
-def get_first_image_url(url, use_selenium=False):
-    print(f"Debug: Accessing URL: {url}")
+def get_first_article_image(url, use_selenium=False):
+    print(f"[DEBUG] Đang truy cập: {url}")
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
     }
-    
+
     if not use_selenium:
         try:
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
-            html = response.text
-            print("Debug: Fetched with requests. Checking for Cloudflare...")
-            if is_cloudflare_protected(html):
-                print("Debug: Cloudflare detected. Switching to Selenium.")
-                return get_first_image_url(url, use_selenium=True)
-            
-            soup = BeautifulSoup(html, 'html.parser')
-            # Find main content - adjust based on site structure
-            # From test, assume main article is in div with class 'article-detail' or similar
-            # You need to inspect the site; placeholder: find first img in body not in header/ads
-            main_content = soup.find('div', class_='article-body')  # Adjust class name
-            if not main_content:
-                main_content = soup.find('article') or soup.find('div', id='content') or soup.body
-            
-            if main_content:
-                imgs = main_content.find_all('img')
-                for img in imgs:
-                    src = img.get('src')
-                    if src:
-                        # Avoid ads: skip if src contains 'ad', 'banner', 'logo', or small size
-                        if 'ad' in src.lower() or 'banner' in src.lower() or 'logo' in src.lower():
-                            print(f"Debug: Skipping ad image: {src}")
-                            continue
-                        # Check if it's a real image (not gif, small icon)
-                        if src.endswith('.jpg') or src.endswith('.png') or 'image' in src.lower():
-                            full_src = urljoin(url, src)
-                            print(f"Debug: Found potential first image: {full_src}")
-                            return full_src
-            print("Debug: No suitable image found.")
-            return None
+            resp = requests.get(url, headers=headers, timeout=15)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, 'html.parser')
         except Exception as e:
-            print(f"Debug: Requests failed: {e}. Trying Selenium.")
-            return get_first_image_url(url, use_selenium=True)
-    
+            print(f"[DEBUG] Requests lỗi: {e} → Chuyển sang Selenium")
+            return get_first_article_image(url, use_selenium=True)
     else:
-        # Use Selenium for bypass
         try:
             options = Options()
-            options.add_argument("--headless")  # Run headless
-            options.add_argument(f"user-agent={headers['User-Agent']}")
-            driver = uc.Chrome(options=options)  # Use undetected_chromedriver
+            options.add_argument("--headless=new")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            driver = uc.Chrome(options=options)
             driver.get(url)
-            time.sleep(5)  # Wait for page load and potential Cloudflare bypass
-            html = driver.page_source
+            time.sleep(6)
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
             driver.quit()
-            print("Debug: Fetched with Selenium.")
-            
-            soup = BeautifulSoup(html, 'html.parser')
-            # Same logic as above
-            main_content = soup.find('div', class_='article-body')  # Adjust
-            if not main_content:
-                main_content = soup.find('article') or soup.find('div', id='content') or soup.body
-            
-            if main_content:
-                imgs = main_content.find_all('img')
-                for img in imgs:
-                    src = img.get('src')
-                    if src:
-                        if 'ad' in src.lower() or 'banner' in src.lower() or 'logo' in src.lower():
-                            print(f"Debug: Skipping ad image: {src}")
-                            continue
-                        if src.endswith('.jpg') or src.endswith('.png') or 'image' in src.lower():
-                            full_src = urljoin(url, src)
-                            print(f"Debug: Found potential first image: {full_src}")
-                            return full_src
-            print("Debug: No suitable image found with Selenium.")
-            return None
+            print("[DEBUG] Selenium tải trang thành công")
         except Exception as e:
-            print(f"Debug: Selenium failed: {e}")
+            print(f"[DEBUG] Selenium lỗi: {e}")
             return None
 
-# Process the sheet
+    # Ưu tiên 1: Ảnh featured / thumbnail
+    featured = soup.find('div', class_=re.compile(r'featured|thumbnail|post-image|entry-thumb', re.I))
+    if featured:
+        img = featured.find('img')
+        if img:
+            src = get_image_src(img)
+            if src and not is_ad_image(src):
+                full = urljoin(url, src)
+                print(f"[DEBUG] Ảnh featured: {full}")
+                return full
+
+    # Ưu tiên 2: Ảnh đầu tiên trong nội dung bài
+    content = (
+        soup.find('div', class_=re.compile(r'entry-content|article-body|content|post-content', re.I)) or
+        soup.find('article') or
+        soup.body
+    )
+    if content:
+        for img in content.find_all('img'):
+            src = get_image_src(img)
+            if src and not is_ad_image(src):
+                full = urljoin(url, src)
+                print(f"[DEBUG] Ảnh đầu tiên trong bài: {full}")
+                return full
+
+    print("[DEBUG] Không tìm thấy ảnh phù hợp")
+    return None
+
+# === XỬ LÝ SHEET ===
 rows = sheet.get_all_values()
-for row_idx, row in enumerate(rows[1:], start=2):  # Skip header, start from row 2
-    if len(row) < 4:
-        continue  # Skip if row too short
-    link = row[2].strip()  # Column C (index 2)
-    image_cell = row[3].strip()  # Column D (index 3)
-    
+for row_idx, row in enumerate(rows[1:], start=2):  # Bỏ header
+    if len(row) < 3:
+        continue
+    link = row[2].strip()  # Cột C
+    current_image = row[3].strip() if len(row) > 3 else ''
+
     if not link:
-        print(f"Debug: Row {row_idx} - No link, skipping.")
         continue
-    
-    if image_cell:
-        print(f"Debug: Row {row_idx} - Image already present ({image_cell}), skipping.")
+    if current_image:
+        print(f"[DEBUG] Dòng {row_idx}: Đã có ảnh → Bỏ qua")
         continue
-    
-    print(f"Debug: Processing row {row_idx} - Link: {link}")
-    image_url = get_first_image_url(link)
-    
+
+    print(f"[INFO] Xử lý dòng {row_idx}: {link}")
+    image_url = get_first_article_image(link)
+
     if image_url:
-        # Update cell D in row_idx
-        sheet.update_cell(row_idx, 4, image_url)  # Column D is 4
-        print(f"Debug: Updated row {row_idx} with image: {image_url}")
+        sheet.update_cell(row_idx, 4, image_url)
+        print(f"[SUCCESS] Đã ghi ảnh vào dòng {row_idx}: {image_url}")
     else:
-        print(f"Debug: Could not find image for row {row_idx}")
-    time.sleep(2)  # Delay to avoid rate limiting
+        print(f"[FAIL] Không lấy được ảnh cho dòng {row_idx}")
 
-print("Processing complete.")
+    time.sleep(3)  # Tránh bị block
 
-# Test cases:
-# 1. Test with provided link
-test_link = "https://khoahoc.tv/cach-xu-ly-khi-say-thuoc-lao-128235"
-print("\nTest Case 1: Provided link")
-test_image = get_first_image_url(test_link)
-print(f"Test Result: {test_image}")
-
-# 2. Test a link without images or invalid
-invalid_link = "https://example.com"  # Adjust to a real invalid
-print("\nTest Case 2: Invalid or no image link")
-test_image = get_first_image_url(invalid_link)
-print(f"Test Result: {test_image}")
-
-# 3. Test a link known to have Cloudflare (if any, placeholder)
-# cf_link = "https://site-with-cf.com"
-# print("\nTest Case 3: Cloudflare protected link")
-# test_image = get_first_image_url(cf_link)
-# print(f"Test Result: {test_image}")
-
-# Note: Adjust the main_content finder based on actual site inspection.
-# For khoahoc.tv, inspect the page to find the correct class for article body, e.g., 'post-content', 'entry-content', etc.
-# If Cloudflare blocks frequently, consider using proxies or more advanced bypass.
+print("=== HOÀN THÀNH TOÀN BỘ ===")
