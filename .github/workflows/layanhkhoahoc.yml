@@ -26,4 +26,4 @@ jobs:
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: |
-          python khoahocyhoc/layanhkhoahocyhoc.py
+          python khoahoctv/layanhkhoahocyhoc.py
