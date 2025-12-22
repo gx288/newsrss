@@ -106,58 +106,98 @@ try:
     if selected_link == "KHÔNG CÓ LINK MỚI":
         raise Exception("Hết link mới để chạy!")
 
-    # Bước 3: Trial like - PHẦN ĐÃ SỬA CHÍNH
+    # Bước 3: Trial like - PHIÊN BẢN SỬA MỚI, CHẮC ĂN HƠN
     print("\nBƯỚC 3: Thực hiện trial like")
     driver.get("https://100like.vn/fb/liketrial")
-    time.sleep(5)
+    time.sleep(6)  # Chờ page load ổn định
 
-    input_field = driver.find_element(By.CSS_SELECTOR, "input[placeholder='ID Hoặc Link Bài Viết']")
+    input_field = WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='ID Hoặc Link Bài Viết']"))
+    )
     input_field.clear()
     input_field.send_keys(selected_link)
     print("Đã nhập link")
 
-    driver.find_element(By.CSS_SELECTOR, "button.btn.btn-success").click()
+    submit_btn = driver.find_element(By.CSS_SELECTOR, "button.btn.btn-success")
+    submit_btn.click()
     print("Đã click Dùng Thử")
 
-    # Chờ toast hiện ra (khoảng 1-5 giây)
-    time.sleep(5)
+    # Chờ tối đa 15 giây để toast/popup hiện ra (error hoặc success)
+    print("Chờ toast/notification hiện (tối đa 15s)...")
+    time.sleep(3)  # Cho toast bắt đầu render
 
-    # Ưu tiên bắt toast error (class chính xác bạn cung cấp)
-    toast_selector = ".vue-notification-template.mmo-notification.error .notification-content"
-    history_rows_selector = "div.col-md-8 table.table tbody tr"
+    toast_content_selector = ".vue-notification-template.mmo-notification .notification-content"
+    toast_title_selector = ".vue-notification-template.mmo-notification .notification-title"
+    success = False
+    error_msg = None
 
     try:
-        # Kiểm tra toast error trước
-        error_toast = driver.find_element(By.CSS_SELECTOR, toast_selector).text.strip()
-        if "dùng like thử miễn phí" in error_toast or "Bạn đã dùng" in error_toast:
-            result_message = "LỖI: Bạn đã dùng like thử miễn phí"
-        elif "Hết số lần dùng thử" in error_toast:
-            result_message = "LỖI: Hết số lần dùng thử, quay lại ngày mai"
+        # Chờ toast xuất hiện
+        toast_content = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, toast_content_selector))
+        )
+        content_text = toast_content.text.strip()
+        title_text = driver.find_element(By.CSS_SELECTOR, toast_title_selector).text.strip()
+
+        print(f"Bắt được toast: Title='{title_text}' | Content='{content_text}'")
+
+        if "error" in driver.find_element(By.CSS_SELECTOR, ".vue-notification-template.mmo-notification").get_attribute("class"):
+            if "dùng like thử miễn phí" in content_text or "Bạn đã dùng" in content_text:
+                error_msg = "LỖI: Bạn đã dùng like thử miễn phí"
+            elif "Hết số lần dùng thử" in content_text:
+                error_msg = "LỖI: Hết số lần dùng thử, quay lại ngày mai"
+            else:
+                error_msg = f"LỖI TOAST: {content_text}"
         else:
-            result_message = f"LỖI TOAST: {error_toast}"
-        print(f"Bắt được toast error: {result_message}")
+            # Nếu không có class error → giả sử success
+            success = True
+            result_message = f"THÀNH CÔNG (toast): {content_text}"
 
     except:
-        # Không có toast error → reload để cập nhật lịch sử và kiểm tra
-        print("Không thấy toast error → reload page để kiểm tra lịch sử")
+        print("Không bắt được toast nào (hoặc hết thời gian chờ) → chuyển sang check lịch sử")
+
+    if not success and not error_msg:
+        # Không có toast hoặc toast không rõ → reload và chờ lịch sử load động
+        print("Reload page và chờ lịch sử load (tối đa 25s)...")
         driver.refresh()
-        time.sleep(8)  # Chờ lịch sử load
+        time.sleep(5)
+
+        # Selector chính xác hơn dựa trên HTML bạn cung cấp
+        history_table_selector = "div.col-md-8.mb-5 table.table tbody"
 
         try:
-            rows = driver.find_elements(By.CSS_SELECTOR, history_rows_selector)
+            # Chờ tbody có ít nhất 1 row
+            WebDriverWait(driver, 25).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, history_table_selector + " tr"))
+            )
+            rows = driver.find_elements(By.CSS_SELECTOR, history_table_selector + " tr")
+
             if rows:
-                # Lấy ngày giờ của dòng đầu tiên (mới nhất)
-                latest_time = rows[0].find_element(By.TAG_NAME, "td:last-child").text.strip()
-                today = datetime.now().strftime("%d/%m/%Y")
-                if today in latest_time or "22/12/2025" in latest_time:  # Linh hoạt với định dạng
-                    result_message = "THÀNH CÔNG: Đã dùng thử thành công (có lịch sử mới)"
-                    print(f"Lịch sử mới: {latest_time} → THÀNH CÔNG")
+                # Lấy dòng mới nhất (dòng đầu tiên)
+                latest_time_td = rows[0].find_elements(By.TAG_NAME, "td")[1]  # Cột thứ 2 là ngày giờ
+                latest_time = latest_time_td.text.strip()
+                print(f"Tìm thấy lịch sử mới nhất: {latest_time}")
+
+                # Check nếu là hôm nay (ngày hiện tại là 22/12/2025)
+                if "22/12/2025" in latest_time:
+                    success = True
+                    result_message = f"THÀNH CÔNG (lịch sử): {latest_time}"
                 else:
-                    result_message = "KHÔNG RÕ: Có lịch sử nhưng không phải hôm nay"
+                    result_message = f"KHÔNG RÕ: Có lịch sử nhưng không phải hôm nay ({latest_time})"
             else:
-                result_message = "KHÔNG RÕ: Không có lịch sử nào"
+                result_message = "KHÔNG RÕ: Table có nhưng không có row nào"
+
         except Exception as e:
-            result_message = f"LỖI KIỂM TRA LỊCH SỬ: {str(e)}"
+            result_message = f"LỖI CHECK LỊCH SỬ: Không tìm thấy row sau 25s chờ ({str(e)})"
+            print(result_message)
+
+    if success:
+        result_message = result_message or "THÀNH CÔNG: Đã dùng thử thành công"
+    elif error_msg:
+        result_message = error_msg
+    else:
+        if "result_message" not in locals():
+            result_message = "KHÔNG RÕ: Không bắt được toast cũng không thấy lịch sử mới"
 
     print(f"Kết quả cuối cùng: {result_message}")
 
