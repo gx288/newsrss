@@ -7,14 +7,14 @@ from urllib.parse import urljoin
 import threading
 import os
 import re
-from html import unescape
+from html import unescape  # Để xử lý description cũ bị escape
 
 # ==================== CONFIG ====================
 base_url = "https://khoahoc.tv/yhoc"
 num_threads = 15
 output_dir = "khoahoctv"
 output_file = os.path.join(output_dir, "yhoc_khoahoc_tv.rss")
-max_pages = 1011
+max_pages = 1011  # Thay đổi nếu muốn test ít trang hơn
 # ===============================================
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
@@ -92,7 +92,6 @@ def scrape_page(page_num):
             if thumb_a:
                 img = thumb_a.find('img')
                 if img:
-                    # Ưu tiên data-src (phổ biến trên site này)
                     possible_src = img.get('data-src') or img.get('src') or ''
                     if possible_src and 'holder.png' not in possible_src:
                         # Loại bỏ hậu tố -200, -300, etc. để lấy full size
@@ -138,46 +137,49 @@ else:
     ET.SubElement(channel, "link").text = base_url
     ET.SubElement(channel, "description").text = "Tin tức y học, sức khỏe mới nhất từ KhoaHoc.tv"
 
-    # Bài mới lên đầu (có ảnh full size đẹp)
+    # Bài mới lên đầu (ảnh full size đẹp)
     for item_data in all_new_items:
         item = ET.SubElement(channel, "item")
         ET.SubElement(item, "title").text = item_data['title']
         ET.SubElement(item, "link").text = item_data['link']
         ET.SubElement(item, "guid", isPermaLink="true").text = item_data['link']
+        
         desc_html = item_data['description']
         if item_data.get('thumb'):
             desc_html += f'<br/><img src="{item_data["thumb"]}" alt="{item_data["title"]}"/>'
         
-        # Dùng CDATASection để nội dung HTML không bị escape
+        # Gán thẳng CDATA vào .text → ElementTree sẽ giữ nguyên không escape
         description_elem = ET.SubElement(item, "description")
-        description_elem.append(ET.CDATA(desc_html))  # <--- QUAN TRỌNG NHẤT!
+        description_elem.text = f"<![CDATA[{desc_html}]]>"
 
-    # Bài cũ giữ nguyên (kể cả holder.png nếu có)
+    # Bài cũ (giữ nguyên hoặc sửa nếu bị escape trước đó)
     for old_item_data in old_items:
         item = ET.SubElement(channel, "item")
         ET.SubElement(item, "title").text = old_item_data['title']
         ET.SubElement(item, "link").text = old_item_data['link']
         ET.SubElement(item, "guid", isPermaLink="true").text = old_item_data['guid']
         
-        # Nếu description cũ đã bị escape, có thể unescape trước (tùy chọn)
-        clean_desc = unescape(old_item_data['description'])  # Bỏ &lt; &gt; &quot;
+        # Unescape description cũ (nếu bị &lt; &gt; &quot;)
+        clean_desc = unescape(old_item_data['description'] or '')
+        
+        # Nếu chưa có CDATA thì thêm vào
+        if not clean_desc.strip().startswith('<![CDATA['):
+            clean_desc = f"<![CDATA[{clean_desc.strip()}]]>"
+        
         desc_elem = ET.SubElement(item, "description")
-        desc_elem.append(ET.CDATA(clean_desc))
+        desc_elem.text = clean_desc
 
-    # Ghi file: Dùng tostring với method='xml'
+    # Ghi file đẹp
     xmlstr = ET.tostring(rss, encoding='unicode', method='xml')
-    
-    # Nếu muốn đẹp, dùng minidom nhưng KHÔNG parse lại toàn bộ (vì nó sẽ escape CDATA)
     reparsed = minidom.parseString(xmlstr)
     pretty_xml = reparsed.toprettyxml(indent="  ")
     
-    # Fix lỗi dòng thừa của toprettyxml
-    lines = pretty_xml.splitlines()
-    final_lines = [line for line in lines if line.strip()]  # Bỏ dòng trống thừa
-    xmlstr_clean = "\n".join(final_lines)
+    # Xóa các dòng trống thừa do toprettyxml tạo ra
+    lines = [line for line in pretty_xml.splitlines() if line.strip()]
+    xmlstr_clean = "\n".join(lines)
     
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(xmlstr_clean)
 
-    print(f"\nHOÀN THÀNH! RSS tại: {output_file}")
-    print(f"Thêm {len(all_new_items)} bài mới -> Tổng: {len(all_new_items) + len(old_items)} bài")
+    print(f"\nHOÀN THÀNH! RSS đã được tạo/cập nhật tại: {output_file}")
+    print(f"Thêm {len(all_new_items)} bài mới -> Tổng bài trong RSS: {len(all_new_items) + len(old_items)}")
