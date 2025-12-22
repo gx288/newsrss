@@ -1,14 +1,12 @@
 import feedparser
 import os
 import json
-import tempfile
-import shutil
-from google import genai
+from google import genai  # Import đúng cho package google-genai mới
+from google.genai import types  # Để dùng types nếu cần (tùy chọn)
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from bs4 import BeautifulSoup
 import gspread.exceptions
-from icrawler.builtin import BingImageCrawler
 
 # Cấu hình
 SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
@@ -16,11 +14,21 @@ RSS_SHEET_NAME = "RSS"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEETS_CREDENTIALS = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
-# Danh sách model ưu tiên (cập nhật cho Gemini hiện tại tháng 12/2025)
+# Danh sách model ưu tiên (cập nhật tháng 12/2025)
 MODEL_PRIORITY = [
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-    "gemini-1.0-pro",
+    "gemini-3-pro-preview",        # Mạnh nhất: Thế hệ 3 bản Pro, ưu tiên cho tác vụ cực khó
+    "gemini-3-flash-preview",      # Nhanh & Mạnh: Thế hệ 3 bản Flash (hiện tại trong ảnh là bản Preview)
+    "gemini-3-flash",              # Bản chính thức của dòng 3 Flash (nếu có trong hệ thống của bạn)
+    "gemini-3-flash-lite",         # Bản tiết kiệm nhất của thế hệ 3
+    "gemini-2.5-pro",              # Model Pro ổn định nhất của thế hệ 2.5
+    "gemini-2.5-pro-preview-tts",  # Bản 2.5 Pro tối ưu cho chuyển đổi văn bản thành giọng nói
+    "gemini-2.5-flash",            # Cân bằng tốt nhất dòng 2.5
+    "gemini-2.5-flash-preview",    # Bản thử nghiệm của 2.5 Flash
+    "gemini-2.5-flash-preview-tts",# Bản 2.5 Flash tối ưu cho giọng nói
+    "gemini-2.5-flash-lite",       # Bản nhẹ, tiết kiệm nhất dòng 2.5
+    "gemini-2.5-flash-lite-preview", # Bản preview của dòng lite 2.5
+    "gemini-2.0-flash",            # Model dòng 2.0 rất ổn định và phổ biến
+    "gemini-2.0-flash-lite",       # Bản nhẹ nhất của dòng 2.0
 ]
 
 # Prompt
@@ -28,7 +36,7 @@ PROMPT = """
 Tóm tắt thành vài đoạn văn ngắn (không dùng các đoạn tóm tắt ngắn ở đầu đoạn văn), có emoji (khác nhau) phù hợp với nội dung của đoạn đặt ở đầu dòng và hashtag ở cuối cùng của bài viết. Khoảng 500-1000 kí tự phù hợp với Facebook. Hãy viết thành đoạn văn trôi chảy, không dùng "tiêu đề ngắn". Hãy đặt tất cả hashtag ở cuối bài viết, không đặt ở cuối mỗi đoạn. Thêm hashtag #dongysonha. Viết theo quy tắc 4C, đầy đủ ý, nội dung phù hợp với tiêu đề, giải quyết được tình trạng, câu hỏi trong tiêu đề, làm thỏa mãn người đọc, trung thực, không dùng đại từ nhân xưng. Kết quả trả về có 1 phần tiêu đề được VIẾT IN HOA TẤT CẢ và "👇👇👇" cuối tiêu đề.
 """
 
-# Tạo client Gemini
+# Tạo client (API key từ env GEMINI_API_KEY)
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Biến theo dõi
@@ -81,49 +89,6 @@ def get_existing_links(sheet_name):
         print(f"Lỗi khi lấy link: {str(e)}")
         return set()
 
-def search_image_with_icrawler(query):
-    """
-    Dùng icrawler để tìm và tải 1 ảnh đầu tiên từ Bing (kích thước medium trở lên).
-    Trả về URL của ảnh đầu tiên tìm được.
-    """
-    temp_dir = tempfile.mkdtemp()
-    try:
-        crawler = BingImageCrawler(
-            downloader_threads=2,
-            storage={'root_dir': temp_dir},
-            log_level='INFO'  # Có thể đổi thành 'DEBUG' nếu muốn xem chi tiết
-        )
-        # Filters: size >= medium, chỉ lấy 5 để nhanh, min_size để đảm bảo chất lượng
-        filters = dict(size='medium')  # 'large', 'medium', 'small'
-        crawler.crawl(
-            keyword=query,
-            filters=filters,
-            max_num=5,  # Chỉ cần vài cái để chọn
-            min_size=(400, 400)  # Kích thước tối thiểu
-        )
-        
-        # Tìm file ảnh đầu tiên trong thư mục temp (icrawler lưu theo số)
-        downloaded_files = []
-        for root, _, files in os.walk(temp_dir):
-            for f in files:
-                if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
-                    downloaded_files.append(os.path.join(root, f))
-        
-        if downloaded_files:
-            # Lấy ảnh đầu tiên
-            first_image_path = downloaded_files[0]
-            print(f"Đã tìm được ảnh fallback từ Bing (icrawler): {first_image_path}")
-            return first_image_path  # Trả về path local để upload sau
-        else:
-            print("icrawler không tải được ảnh nào.")
-            return None
-    except Exception as e:
-        print(f"Lỗi khi dùng icrawler tìm ảnh: {str(e)}")
-        return None
-    finally:
-        # Dọn dẹp temp dir (giữ lại nếu muốn debug)
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
 def get_rss_feed(rss_url, sheet_name):
     print(f"Bắt đầu lấy dữ liệu từ RSS feed: {rss_url}...")
     feed = feedparser.parse(rss_url)
@@ -141,57 +106,30 @@ def get_rss_feed(rss_url, sheet_name):
         title = entry.title
         description = entry.description
         pubdate = entry.get('published') or entry.get('pubDate') or entry.get('updated') or ''
-        
         image_url = None
-        local_image_path = None  # Để lưu path nếu dùng icrawler
-        
-        # Ưu tiên ảnh từ enclosures
         if hasattr(entry, 'enclosures') and entry.enclosures:
             for enc in entry.enclosures:
                 if enc.get('type', '').startswith('image/'):
                     image_url = enc.get('url')
                     break
-        
-        # Nếu không, lấy từ description
         if not image_url:
             soup = BeautifulSoup(description, 'html.parser')
             img_tag = soup.find('img')
             if img_tag and img_tag.get('src'):
-                src = img_tag['src']
-                if src.startswith('http') and "holder.png" not in src:
-                    image_url = src
-        
-        # Nếu vẫn không có hoặc placeholder → dùng icrawler tìm fallback
-        if not image_url or "holder.png" in str(image_url):
-            print(f"Không có ảnh hợp lệ từ RSS cho bài: {title}. Đang tìm fallback bằng icrawler...")
-            local_image_path = search_image_with_icrawler(title)
-            # Nếu tìm được local path, sẽ upload lên đâu đó hoặc để URL = path (nhưng Sheets chấp nhận URL http)
-            # Vấn đề: icrawler tải về local, nhưng Sheets cần URL công khai.
-            # Giải pháp tạm: Nếu bạn có hosting (Imgur, Cloudinary...), upload lên lấy URL.
-            # Ở đây tạm để None nếu không có URL công khai.
-            # Hoặc dùng placeholder default.
-            if local_image_path:
-                print("Tìm được ảnh local nhưng chưa có cách upload → tạm bỏ qua ảnh fallback.")
-                # TODO: Thêm upload to Imgur hoặc Google Drive để lấy link công khai nếu cần.
-        
+                image_url = img_tag['src']
         articles.append({
             "title": title,
             "description": description,
             "link": link,
-            "image_url": image_url,  # URL từ RSS hoặc None
-            "local_image_path": local_image_path,  # Nếu có fallback local
+            "image_url": image_url,
             "pubdate": pubdate
         })
-        print(f"Đã thêm bài mới: {title} (ảnh: {'có URL' if image_url else 'không hoặc local'})")
-        
+        print(f"Đã thêm bài mới: {title}")
         if len(articles) >= 5:
             print(f"Đạt giới hạn 5 bài mới cho RSS {rss_url}.")
             break
     print(f"Hoàn tất: {len(articles)} bài mới sẽ xử lý.")
     return articles
-
-# Các hàm còn lại giữ nguyên (rewrite_content, append_to_gsheet, main)
-# ... (copy từ code trước)
 
 def rewrite_content(title, description):
     print(f"Bắt đầu tóm tắt bài: {title}")
@@ -206,15 +144,22 @@ def rewrite_content(title, description):
             content = response.text.strip()
             parts = content.split("👇👇👇")
             if len(parts) < 2:
-                print(f"Định dạng không hợp lệ từ {model_name}. Thử model khác...")
+                print(f"Định dạng không hợp lệ từ {model_name} (thiếu 👇👇👇). Thử model khác...")
                 continue
             summary_title = parts[0].strip()
             summary_content = parts[1].strip()
             print(f"Tóm tắt thành công với {model_name}")
             return summary_title, summary_content
         except Exception as e:
-            print(f"Lỗi với {model_name}: {str(e)}")
-            continue
+            if "quota" in str(e).lower() or "429" in str(e):
+                print(f"Quota exceeded cho {model_name}. Thử model tiếp...")
+                continue
+            elif "not found" in str(e).lower() or "404" in str(e):
+                print(f"Model {model_name} không tồn tại. Bỏ qua...")
+                continue
+            else:
+                print(f"Lỗi khác với {model_name}: {str(e)}")
+                continue
     print(f"Hết model khả dụng cho bài '{title}'.")
     return None, None
 
@@ -231,7 +176,7 @@ def append_to_gsheet(title, summary_title, summary_content, link, image_url, pub
         header = ["Original Title", "Summary", "Link", "Image URL", "Publish Date", "Ảnh", "Ngày"]
         if not sheet.get_all_values():
             sheet.insert_row(header, 1)
-        row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url or "", pubdate, "", ""]
+        row = [title, summary_title + "\n👇👇👇\n" + summary_content, link, image_url, pubdate, "", ""]
         sheet.insert_row(row, 2)
         image_formula = '=IF(D2<>""; IMAGE(D2); "")'
         date_formula = '=IF(E2<>""; DATE(MID(E2; FIND(","; E2)+9; 4); MATCH(MID(E2; FIND(","; E2)+5; 3); {"Jan";"Feb";"Mar";"Apr";"May";"Jun";"Jul";"Aug";"Sep";"Oct";"Nov";"Dec"}; 0); MID(E2; FIND(","; E2)+2; 2)); "")'
