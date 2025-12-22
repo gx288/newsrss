@@ -7,13 +7,14 @@ from urllib.parse import urljoin
 import threading
 import os
 import re
+from html import unescape
 
 # ==================== CONFIG ====================
 base_url = "https://khoahoc.tv/yhoc"
 num_threads = 15
 output_dir = "khoahoctv"
 output_file = os.path.join(output_dir, "yhoc_khoahoc_tv.rss")
-max_pages = 1011  # Chạy thật: đổi thành 1011
+max_pages = 1011
 # ===============================================
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
@@ -146,7 +147,10 @@ else:
         desc_html = item_data['description']
         if item_data.get('thumb'):
             desc_html += f'<br/><img src="{item_data["thumb"]}" alt="{item_data["title"]}"/>'
-        ET.SubElement(item, "description").text = f"<![CDATA[{desc_html}]]>"
+        
+        # Dùng CDATASection để nội dung HTML không bị escape
+        description_elem = ET.SubElement(item, "description")
+        description_elem.append(ET.CDATA(desc_html))  # <--- QUAN TRỌNG NHẤT!
 
     # Bài cũ giữ nguyên (kể cả holder.png nếu có)
     for old_item_data in old_items:
@@ -154,16 +158,24 @@ else:
         ET.SubElement(item, "title").text = old_item_data['title']
         ET.SubElement(item, "link").text = old_item_data['link']
         ET.SubElement(item, "guid", isPermaLink="true").text = old_item_data['guid']
-        ET.SubElement(item, "description").text = old_item_data['description']
+        
+        # Nếu description cũ đã bị escape, có thể unescape trước (tùy chọn)
+        clean_desc = unescape(old_item_data['description'])  # Bỏ &lt; &gt; &quot;
+        desc_elem = ET.SubElement(item, "description")
+        desc_elem.append(ET.CDATA(clean_desc))
 
-    # Ghi file đẹp
-    xmlstr = minidom.parseString(ET.tostring(rss, encoding='unicode')).toprettyxml(indent="  ")
-    # Loại bỏ dòng <?xml version="1.0" ?> thừa nếu có (toprettyxml đôi khi thêm)
-    lines = xmlstr.splitlines()
-    if lines[0].strip() == '<?xml version="1.0" ?>':
-        lines = lines[1:]
-    xmlstr_clean = '\n'.join(lines)
-
+    # Ghi file: Dùng tostring với method='xml'
+    xmlstr = ET.tostring(rss, encoding='unicode', method='xml')
+    
+    # Nếu muốn đẹp, dùng minidom nhưng KHÔNG parse lại toàn bộ (vì nó sẽ escape CDATA)
+    reparsed = minidom.parseString(xmlstr)
+    pretty_xml = reparsed.toprettyxml(indent="  ")
+    
+    # Fix lỗi dòng thừa của toprettyxml
+    lines = pretty_xml.splitlines()
+    final_lines = [line for line in lines if line.strip()]  # Bỏ dòng trống thừa
+    xmlstr_clean = "\n".join(final_lines)
+    
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(xmlstr_clean)
 
