@@ -20,16 +20,17 @@ jobs:
         with:
           python-version: '3.11'
 
+# .github/workflows/scrape-fb-posts.yml (chỉ sửa phần Install)
       - name: Install required packages
         run: |
           python -m pip install --upgrade pip
-          # Cài facebook-scraper mới nhất + package fix lxml.html.clean
-          pip install facebook-scraper \
-                      lxml_html_clean \
+          pip install facebook-page-scraper \
                       gspread==6.1.2 \
                       google-auth==2.35.0 \
                       google-auth-oauthlib==1.2.1 \
-                      google-auth-httplib2==0.2.0
+                      google-auth-httplib2==0.2.0 \
+                      selenium \
+                      webdriver-manager
 
       - name: Run Facebook Scraper
         env:
