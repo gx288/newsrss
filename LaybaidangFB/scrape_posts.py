@@ -56,7 +56,7 @@ def main():
     logger.info(f"Đã tìm thấy {len(existing_urls)} bài cũ")
 
     # Thu thập bài mới bằng facebook-page-scraper
-    scraper = Facebook_scraper(browser="chrome", headless=True, timeout=60)
+    scraper = Facebook_scraper(page_or_group_name=PAGE_NAME, browser="chrome", headless=True, timeout=90)
     new_posts = []
 
     try:
