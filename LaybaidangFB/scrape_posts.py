@@ -52,19 +52,32 @@ def main():
     existing_data = sheet.get_all_values()
     existing_urls = {row[0].strip() for row in existing_data[1:] if row and row[0].strip()}
     logger.info(f"Đã tìm thấy {len(existing_urls)} bài cũ")
+# scrape_posts.py (chỉ thay phần liên quan đến get_posts)
 
     new_posts = []
     try:
-        # Lấy 30 trang (khoảng 30-90 bài tùy page)
+        # Đọc cookie từ GitHub Secret (biến môi trường)
+        cookies_content = os.environ.get("FB_COOKIES")
+        if not cookies_content:
+            logger.error("Không tìm thấy FB_COOKIES trong environment variables!")
+            raise ValueError("Thiếu FB_COOKIES")
+
+        # Tạo file cookie tạm thời để facebook-scraper đọc
+        temp_cookie_path = "temp_cookies.txt"
+        with open(temp_cookie_path, "w", encoding="utf-8") as f:
+            f.write(cookies_content)
+
         for post in get_posts(
             account=PAGE_NAME,
             pages=30,
+            cookies=temp_cookie_path,  # Đường dẫn file tạm
             options={
                 "comments": False,
                 "reactors": False,
                 "allow_extra_requests": True,
                 "timeout": 60,
-                "progress": False
+                "progress": False,
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
             }
         ):
             post_url = post.get("post_url", "").strip()
@@ -84,11 +97,15 @@ def main():
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Mới"
             ])
-            existing_urls.add(post_url)  # Tránh trùng trong run này
+            existing_urls.add(post_url)
             logger.info(f"Tìm thấy bài mới: {post_url}")
 
-    except exceptions.TemporarilyBanned as e:
-        logger.error(f"Bị Facebook chặn tạm thời: {e}")
+        # Xóa file tạm sau khi dùng xong (tùy chọn)
+        if os.path.exists(temp_cookie_path):
+            os.remove(temp_cookie_path)
+
+    except exceptions.TemporarilyBanned:
+        logger.error("Bị Facebook chặn tạm thời (cookie có thể hết hạn hoặc hành vi bất thường)")
     except Exception as e:
         logger.error(f"Lỗi khi scrape: {e}", exc_info=True)
 
