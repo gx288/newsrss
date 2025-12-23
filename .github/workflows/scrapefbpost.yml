@@ -30,13 +30,12 @@ jobs:
                       gspread==6.1.2 \
                       google-auth==2.35.0 \
                       google-auth-oauthlib==1.2.1 \
-                      google-auth-httplib2==0.2.0
-
-- name: Run Facebook Scraper
-        env:
-          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-          FB_COOKIES: ${{ secrets.FB_COOKIES }}  # ← Thêm dòng này
-        run: python -u LaybaidangFB/scrape_posts.py
+                      google-auth-httplib2==0.2.0      
+      - name: Run Facebook Scraper
+              env:
+                GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+                FB_COOKIES: ${{ secrets.FB_COOKIES }}  # ← Thêm dòng này
+              run: python -u LaybaidangFB/scrape_posts.py
 
       - name: Upload log files (if any)
         if: always()
