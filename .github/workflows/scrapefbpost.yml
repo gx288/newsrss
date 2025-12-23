@@ -3,8 +3,6 @@ name: Scrape Facebook Posts Daily
 
 on:
   schedule:
-    - cron: '0 1 * * *'   # 08:00 VN (01:00 UTC)
-    - cron: '0 13 * * *'  # 20:00 VN (13:00 UTC)
   workflow_dispatch:
 
 jobs:
