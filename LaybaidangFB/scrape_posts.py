@@ -57,17 +57,32 @@ def main():
 
     # Thu thập bài mới bằng facebook-page-scraper
     scraper = Facebook_scraper(page_or_group_name=PAGE_NAME, browser="chrome", headless=True, timeout=90)
+    # Thu thập bài mới bằng facebook-page-scraper
     new_posts = []
 
     try:
-        posts = scraper.scrap_to_json(PAGE_NAME, posts_count=50)  # Lấy 50 bài gần nhất
+        scraper = Facebook_scraper(
+            page_or_group_name=PAGE_NAME,
+            browser="chrome",
+            headless=True,
+            timeout=90,
+            take_screenshot=False,
+            slow_mode=False
+        )
+        
+        logger.info(f"Đang scrape page: {PAGE_NAME}")
+        
+        # scrap_to_json() không nhận posts_count nữa, nó sẽ lấy nhiều bài nhất có thể
+        posts = scraper.scrap_to_json()  # ← Chỉ gọi như này, không truyền tham số
+
         for post_id, post_data in posts.items():
             post_url = f"https://www.facebook.com/{post_id}"
             if post_url in existing_urls:
                 continue
 
-            content = post_data.get("content", "").replace("\n", " ")[:2000]
-            image = post_data.get("image", [""])[0] if post_data.get("image") else ""
+            content = post_data.get("content", "").replace("\n", " ").strip()[:2000]
+            images = post_data.get("images", []) or []
+            image = images[0] if images else ""
             time_str = post_data.get("time", "")
 
             new_posts.append([
@@ -81,7 +96,7 @@ def main():
             logger.info(f"Tìm thấy bài mới: {post_url}")
 
     except Exception as e:
-        logger.error(f"Lỗi khi scrape: {e}", exc_info=True)
+        logger.error(f"Lỗi khi scrape Facebook: {e}", exc_info=True)
 
     # Ghi vào sheet
     if new_posts:
