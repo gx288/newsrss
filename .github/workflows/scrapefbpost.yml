@@ -23,8 +23,9 @@ jobs:
       - name: Install required packages
         run: |
           python -m pip install --upgrade pip
-          # Cài facebook-scraper mới nhất (đã thay demjson bằng demjson3)
+          # Cài facebook-scraper mới nhất + package fix lxml.html.clean
           pip install facebook-scraper \
+                      lxml_html_clean \
                       gspread==6.1.2 \
                       google-auth==2.35.0 \
                       google-auth-oauthlib==1.2.1 \
