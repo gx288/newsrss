@@ -32,9 +32,10 @@ jobs:
                       google-auth-oauthlib==1.2.1 \
                       google-auth-httplib2==0.2.0
 
-      - name: Run Facebook Scraper
+- name: Run Facebook Scraper
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          FB_COOKIES: ${{ secrets.FB_COOKIES }}  # ← Thêm dòng này
         run: python -u LaybaidangFB/scrape_posts.py
 
       - name: Upload log files (if any)
