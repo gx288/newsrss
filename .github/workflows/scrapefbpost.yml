@@ -23,7 +23,8 @@ jobs:
       - name: Install required packages
         run: |
           python -m pip install --upgrade pip
-          pip install facebook-scraper==0.2.37 \
+          # Cài facebook-scraper mới nhất (đã thay demjson bằng demjson3)
+          pip install facebook-scraper \
                       gspread==6.1.2 \
                       google-auth==2.35.0 \
                       google-auth-oauthlib==1.2.1 \
