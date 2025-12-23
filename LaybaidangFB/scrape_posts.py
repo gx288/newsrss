@@ -8,7 +8,6 @@ import gspread
 from google.oauth2.service_account import Credentials
 from facebook_scraper import get_posts, exceptions
 
-# CONFIG
 PAGE_NAME = "ptthady"
 SPREADSHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
 SHEET_NAME = "BS Thu Hà"
@@ -52,17 +51,15 @@ def main():
     existing_data = sheet.get_all_values()
     existing_urls = {row[0].strip() for row in existing_data[1:] if row and row[0].strip()}
     logger.info(f"Đã tìm thấy {len(existing_urls)} bài cũ")
-# scrape_posts.py (chỉ thay phần liên quan đến get_posts)
 
     new_posts = []
     try:
-        # Đọc cookie từ GitHub Secret (biến môi trường)
+        # Đọc cookie từ GitHub Secret
         cookies_content = os.environ.get("FB_COOKIES")
         if not cookies_content:
             logger.error("Không tìm thấy FB_COOKIES trong environment variables!")
             raise ValueError("Thiếu FB_COOKIES")
 
-        # Tạo file cookie tạm thời để facebook-scraper đọc
         temp_cookie_path = "temp_cookies.txt"
         with open(temp_cookie_path, "w", encoding="utf-8") as f:
             f.write(cookies_content)
@@ -70,7 +67,7 @@ def main():
         for post in get_posts(
             account=PAGE_NAME,
             pages=30,
-            cookies=temp_cookie_path,  # Đường dẫn file tạm
+            cookies=temp_cookie_path,
             options={
                 "comments": False,
                 "reactors": False,
@@ -100,7 +97,6 @@ def main():
             existing_urls.add(post_url)
             logger.info(f"Tìm thấy bài mới: {post_url}")
 
-        # Xóa file tạm sau khi dùng xong (tùy chọn)
         if os.path.exists(temp_cookie_path):
             os.remove(temp_cookie_path)
 
@@ -113,7 +109,7 @@ def main():
         sheet.append_rows(new_posts)
         logger.info(f"Đã thêm {len(new_posts)} bài viết mới")
     else:
-        logger.info("Không tìm thấy bài mới")
+        logger.info("Không tìm thấy bài mới (kiểm tra cookie hoặc thử acc khác)")
 
     logger.info("=== Kết thúc ===")
 
