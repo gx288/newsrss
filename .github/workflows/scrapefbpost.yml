@@ -1,26 +1,42 @@
-# .github/workflows/scrape.yml
-name: Scrape Facebook Posts
+# .github/workflows/scrape-fb-posts.yml
+name: Scrape Facebook Posts Daily
 
 on:
   schedule:
-    - cron: '0 1 * * *'  # 8h sáng Việt Nam (1h UTC)
-    - cron: '0 13 * * *' # 8h tối Việt Nam (13h UTC)
+    - cron: '0 1 * * *'   # 08:00 VN (01:00 UTC)
+    - cron: '0 13 * * *'  # 20:00 VN (13:00 UTC)
   workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - name: Install dependencies
+          python-version: '3.11'
+
+      - name: Install required packages
         run: |
           python -m pip install --upgrade pip
-          pip install facebook-scraper gspread google-auth google-auth-oauthlib google-auth-httplib2
-      - name: Run scrape script
+          pip install facebook-scraper==0.2.37 \
+                      gspread==6.1.2 \
+                      google-auth==2.35.0 \
+                      google-auth-oauthlib==1.2.1 \
+                      google-auth-httplib2==0.2.0
+
+      - name: Run Facebook Scraper
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
         run: python -u LaybaidangFB/scrape_posts.py
+
+      - name: Upload log files (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-logs-${{ github.run_number }}
+          path: LaybaidangFB/logs/*.log
