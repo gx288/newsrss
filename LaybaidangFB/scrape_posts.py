@@ -1,93 +1,152 @@
-import os
+# scrape_posts.py
 import json
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from facebook_scraper import get_posts
+import os
 from datetime import datetime
-import time
+import logging
+from pathlib import Path
+import gspread
+from google.oauth2.service_account import Credentials
+from facebook_scraper import get_posts, exceptions
 
-# --- CẤU HÌNH ---
-SHEET_ID = '14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo'
-PAGE_NAME = 'ptthady' # ID của page từ link bạn đưa
-SHEET_TAB_NAME = 'BS Thu Hà'
+# ===================== CONFIG =====================
+PAGE_NAME = "ptthady"
+SPREADSHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
+SHEET_NAME = "BS Thu Hà"
 
-def connect_google_sheet():
-    """Kết nối và trả về worksheet"""
-    # Lấy credentials từ biến môi trường
-    creds_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
+# Tạo thư mục log
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Thiết lập logging
+today = datetime.now().strftime("%Y-%m-%d")
+log_file = LOG_DIR / f"{today}.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-7s | %(message)s",
+    handlers=[
+        logging.FileHandler(log_file, encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+# ===================================================
+
+
+def get_google_sheet_client():
+    """Lấy client google sheet từ secret"""
+    creds_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
     if not creds_json:
-        raise ValueError("Không tìm thấy biến môi trường GOOGLE_SHEETS_CREDENTIALS")
-    
-    creds_dict = json.loads(creds_json)
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    
-    sh = client.open_by_key(SHEET_ID)
-    
+        logger.error("Không tìm thấy biến môi trường GOOGLE_SHEETS_CREDENTIALS")
+        raise ValueError("Thiếu GOOGLE_SHEETS_CREDENTIALS")
+
     try:
-        worksheet = sh.worksheet(SHEET_TAB_NAME)
-    except gspread.exceptions.WorksheetNotFound:
-        # Tạo sheet mới nếu chưa có
-        worksheet = sh.add_worksheet(title=SHEET_TAB_NAME, rows=1000, cols=10)
-        # Tạo header
-        worksheet.append_row(['Post URL', 'Time', 'Text', 'Image URL', 'Scraped Date'])
-        
-    return worksheet
+        creds_dict = json.loads(creds_json)
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        return gspread.authorize(creds)
+    except Exception as e:
+        logger.error(f"Lỗi khi xác thực Google Sheets: {e}")
+        raise
+
 
 def main():
-    print(f"--- Bắt đầu quét page {PAGE_NAME} ---")
-    worksheet = connect_google_sheet()
-    
-    # Lấy danh sách link đã tồn tại để tránh trùng lặp (Cột A)
-    existing_links = set(worksheet.col_values(1))
-    
-    new_rows = []
-    
-    # pages=3 nghĩa là quét khoảng 3 trang scroll (tầm 10-15 bài gần nhất)
-    # Không nên quét quá nhiều một lúc để tránh bị Facebook chặn IP
-    try:
-        # options={"comments": False} để chạy nhanh hơn
-        posts = get_posts(PAGE_NAME, pages=3, options={"comments": False})
-        
-        for post in posts:
-            post_url = post.get('post_url')
-            
-            # Nếu link này chưa có trong sheet thì mới thêm
-            if post_url and post_url not in existing_links:
-                # Xử lý dữ liệu
-                post_text = post.get('text', '')[:4000] # Cắt bớt nếu quá dài để vừa ô Excel
-                post_time = str(post.get('time'))
-                post_image = post.get('image')
-                scraped_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                print(f"-> Tìm thấy bài mới: {post_url}")
-                
-                # Sắp xếp thứ tự cột: Link | Time | Text | Image | ScrapedTime
-                new_rows.append([
-                    post_url,
-                    post_time,
-                    post_text,
-                    post_image,
-                    scraped_date
-                ])
-                # Thêm vào set tạm để tránh trùng lặp ngay trong lần chạy này
-                existing_links.add(post_url)
-            else:
-                pass # Bài đã tồn tại
-                
-    except Exception as e:
-        print(f"Lỗi khi quét Facebook: {e}")
+    logger.info("=== Bắt đầu thu thập bài viết trang Facebook ===")
+    logger.info(f"Trang: {PAGE_NAME}")
+    logger.info(f"Sheet: {SHEET_NAME} (spreadsheet ID: {SPREADSHEET_ID})")
 
-    # Ghi vào sheet (ghi ngược từ dưới lên để bài mới nhất ở dưới cùng theo logic append)
-    # Tuy nhiên facebook-scraper thường trả bài mới nhất trước.
-    # Nếu muốn bài cũ ở trên, bài mới ở dưới, ta đảo ngược list new_rows
-    if new_rows:
-        new_rows.reverse() 
-        worksheet.append_rows(new_rows)
-        print(f"Đã lưu thành công {len(new_rows)} bài viết mới.")
+    # 1. Kết nối Google Sheets
+    try:
+        client = get_google_sheet_client()
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+    except Exception as e:
+        logger.error(f"Không thể mở spreadsheet: {e}")
+        return
+
+    # 2. Lấy hoặc tạo sheet
+    try:
+        sheet = spreadsheet.worksheet(SHEET_NAME)
+    except gspread.exceptions.WorksheetNotFound:
+        logger.info(f"Tạo sheet mới: {SHEET_NAME}")
+        sheet = spreadsheet.add_worksheet(title=SHEET_NAME, rows=1000, cols=6)
+        # Tạo header
+        sheet.append_row([
+            "Post URL",
+            "Nội dung",
+            "Link ảnh",
+            "Thời gian đăng",
+            "Ngày thu thập",
+            "Ghi chú"
+        ])
+        logger.info("Đã tạo sheet và header thành công")
+
+    # 3. Lấy danh sách link đã có (cột A)
+    try:
+        existing_data = sheet.get_all_values()
+        existing_urls = {row[0].strip() for row in existing_data[1:] if row and row[0].strip()}
+        logger.info(f"Đã tìm thấy {len(existing_urls)} bài viết cũ trong sheet")
+    except Exception as e:
+        logger.error(f"Lỗi khi đọc dữ liệu sheet: {e}")
+        return
+
+    # 4. Thu thập bài viết mới
+    new_posts = []
+    try:
+        for post in get_posts(
+            account=PAGE_NAME,
+            pages=30,              # Tăng nếu cần lấy nhiều bài hơn
+            options={
+                "comments": False,
+                "reactors": False,
+                "progress": False,
+                "allow_extra_requests": True,
+                "timeout": 60
+            }
+        ):
+            post_url = post.get("post_url", "").strip()
+            if not post_url or post_url in existing_urls:
+                continue
+
+            content = (post.get("text") or "").replace("\n", " ").strip()[:2000]
+            image = post.get("image") or (post.get("images") or [""])[0]
+            time_obj = post.get("time")
+            time_str = time_obj.strftime("%Y-%m-%d %H:%M:%S") if time_obj else ""
+
+            new_posts.append([
+                post_url,
+                content,
+                image,
+                time_str,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Mới"
+            ])
+
+            existing_urls.add(post_url)  # Tránh trùng trong cùng lần chạy
+
+            logger.info(f"Tìm thấy bài mới: {post_url}")
+
+    except exceptions.TemporarilyBanned as e:
+        logger.error(f"Bị Facebook chặn tạm thời: {e}")
+    except Exception as e:
+        logger.error(f"Lỗi khi lấy bài viết: {e}", exc_info=True)
+
+    # 5. Ghi bài mới vào sheet
+    if new_posts:
+        try:
+            sheet.append_rows(new_posts)
+            logger.info(f"ĐÃ THÊM THÀNH CÔNG {len(new_posts)} bài viết mới vào sheet")
+        except Exception as e:
+            logger.error(f"Lỗi khi ghi dữ liệu vào sheet: {e}")
     else:
-        print("Không có bài viết mới nào.")
+        logger.info("Không tìm thấy bài viết mới nào")
+
+    logger.info("=== Kết thúc thu thập ===")
+
 
 if __name__ == "__main__":
     main()
