@@ -3,43 +3,36 @@ name: Scrape Facebook Posts Daily
 
 on:
   schedule:
-    - cron: '0 1 * * *'   # 08:00 VN (01:00 UTC)
-    - cron: '0 13 * * *'  # 20:00 VN (13:00 UTC)
+    - cron: '0 1 * * *'   # 08:00 VN
+    - cron: '0 13 * * *'  # 20:00 VN
   workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install required packages
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Cài blinker 1.7.0 TRƯỚC để fix lỗi _saferef
-          pip install blinker==1.7.0
-          # Sau đó cài các package còn lại
-          pip install facebook-page-scraper \
+          pip install facebook-scraper \
                       gspread==6.1.2 \
                       google-auth==2.35.0 \
                       google-auth-oauthlib==1.2.1 \
-                      google-auth-httplib2==0.2.0 \
-                      selenium \
-                      webdriver-manager
+                      google-auth-httplib2==0.2.0
 
-      - name: Run Facebook Scraper
+      - name: Run scraper
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
         run: python -u LaybaidangFB/scrape_posts.py
 
-      - name: Upload log files (if any)
+      - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
