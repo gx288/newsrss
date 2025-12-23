@@ -23,4 +23,4 @@ jobs:
       - name: Run scrape script
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-        run: -u python LaybaidangFB/scrape_posts.py
+        run: python -u LaybaidangFB/scrape_posts.py
