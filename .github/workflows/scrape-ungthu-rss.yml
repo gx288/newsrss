@@ -2,7 +2,7 @@ name: Cập nhật RSS Ung thư
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # Mỗi 2 tiếng
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -17,18 +17,19 @@ jobs:
 
     - name: Cài dependencies + Xvfb
       run: |
-        pip install selenium webdriver-manager
+        pip install selenium undetected-chromedriver webdriver-manager
         sudo apt-get update -qq
         sudo apt-get install -y xvfb
 
-    - name: Chạy scraper với màn hình ảo Xvfb
+    - name: Chạy scraper với Xvfb
       run: |
         xvfb-run -a -s "-screen 0 1920x1080x24 +extension RANDR" python -u SKDS/taorsstheolink/scrape_ungthu_rss.py
 
-    - name: Commit & Push nếu có thay đổi
+    - name: Commit & Push nếu thay đổi
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add SKDS/ung_thu_rss.xml
         git commit -m "Cập nhật RSS ung thư $(date +'%Y-%m-%d %H:%M')" || exit 0
         git push
+      
