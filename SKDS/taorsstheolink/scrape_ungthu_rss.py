@@ -72,23 +72,19 @@ def load_existing_links():
 
 
 def create_driver():
-    """Tạo driver với các argument ổn định nhất cho GitHub Actions"""
-    print("=== KHỞI TẠO CHROME DRIVER ===")
+    print("=== KHỞI TẠO CHROME DRIVER VỚI XVFB ===")
     options = Options()
-
+    # KHÔNG DÙNG HEADLESS NỮA → Xvfb sẽ giả lập màn hình thật
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-extensions")
-    options.add_argument("--disable-infobars")
-    options.add_argument("--disable-browser-side-navigation")
-    options.add_argument("--disable-features=VizDisplayCompositor")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument("--remote-debugging-port=9222")
+    # Các argument khác giữ nguyên
 
     service = ChromeService(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
-    driver.set_page_load_timeout(60)  # Timeout ngắn hơn để retry nhanh
+    driver.set_page_load_timeout(90)  # Tăng timeout một chút
     return driver
 
 
