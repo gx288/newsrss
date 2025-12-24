@@ -2,8 +2,8 @@ name: Cập nhật RSS Ung thư
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # Chạy mỗi 2 tiếng
-  workflow_dispatch:        # Cho phép chạy thủ công
+    - cron: '0 */2 * * *'   # Mỗi 2 tiếng
+  workflow_dispatch:        # Chạy thủ công được
 
 jobs:
   scrape:
@@ -18,18 +18,9 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Install Chrome & ChromeDriver
+    - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-        CHROME_VERSION=$(google-chrome --version | grep -oE "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+")
-        wget -q https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/chromedriver-linux64.zip
-        unzip chromedriver-linux64.zip
-        sudo mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
-        sudo chmod +x /usr/bin/chromedriver
-
-    - name: Install Selenium
-      run: pip install selenium
+        pip install selenium webdriver-manager
 
     - name: Run scraper
       run: python -u SKDS/taorsstheolink/scrape_ungthu_rss.py
