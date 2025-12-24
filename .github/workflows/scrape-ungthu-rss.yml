@@ -1,3 +1,31 @@
+name: Cập nhật RSS Ung thư
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # Mỗi 2 tiếng
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'  # <<< Thay từ 3.12 thành 3.11
+
+    - name: Cài dependencies + Xvfb
+      run: |
+        pip install selenium undetected-chromedriver webdriver-manager
+        sudo apt-get update -qq
+        sudo apt-get install -y xvfb
+
+    - name: Chạy scraper với Xvfb
+      run: |
+        xvfb-run -a -s "-screen 0 1920x1080x24 +extension RANDR" python -u SKDS/taorsstheolink/scrape_ungthu_rss.py
+
     - name: Commit & Push nếu có thay đổi
       run: |
         git config user.name "github-actions[bot]"
