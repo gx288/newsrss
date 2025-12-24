@@ -240,11 +240,17 @@ if __name__ == "__main__":
         print(f"Giữ lại {MAX_ITEMS} bài mới nhất.")
 
     # Ghi RSS mới
-    rss_content = generate_rss(all_items)
-    os.makedirs(os.path.dirname(RSS_OUTPUT_PATH) or '.', exist_ok=True)
-    with open(RSS_OUTPUT_PATH, "w", encoding="utf-8") as f:
-        f.write(rss_content)
+    # Ghi RSS mới – chắc chắn thành công
+    output_path = "SKDS/ung_thu_rss.xml"  # Dùng đường dẫn tuyệt đối từ gốc repo
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(rss_content)
+        print(f"\nĐÃ GHI THÀNH CÔNG FILE RSS: {output_path}")
+        print(f"Kích thước file: {os.path.getsize(output_path)} bytes")
+    except Exception as e:
+        print(f"LỖI GHI FILE RSS: {e}")
 
-    print(f"\nĐÃ CẬP NHẬT RSS THÀNH CÔNG: {RSS_OUTPUT_PATH}")
     print(f"Tổng: {len(all_items)} bài ({len(new_items)} mới + {len(old_items)} cũ)")
     print("\n=== KẾT THÚC ===")
