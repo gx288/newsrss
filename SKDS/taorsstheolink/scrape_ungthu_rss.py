@@ -215,11 +215,12 @@ if __name__ == "__main__":
     print("=== BẮT ĐẦU CẬP NHẬT RSS UNG THƯ ===\n")
     new_items = scrape_page()
 
-    # Load bài cũ
+    # Load bài cũ từ RSS (nếu có)
     old_items = []
-    if os.path.exists(RSS_OUTPUT_PATH):
+    output_path = "SKDS/ung_thu_rss.xml"
+    if os.path.exists(output_path):
         try:
-            tree = ET.parse(RSS_OUTPUT_PATH)
+            tree = ET.parse(output_path)
             root = tree.getroot()
             for item_elem in root.findall(".//item"):
                 old_items.append({
@@ -229,28 +230,28 @@ if __name__ == "__main__":
                     'img': item_elem.find("enclosure").get("url") if item_elem.find("enclosure") is not None else "",
                     'pubdate': item_elem.findtext("pubDate") or ""
                 })
-            print(f"Đã load {len(old_items)} bài cũ.")
+            print(f"Đã load {len(old_items)} bài cũ từ RSS.")
         except Exception as e:
             print(f"Lỗi parse RSS cũ: {e}")
 
-    # Ghép: mới + cũ
+    # Ghép: bài mới lên đầu + bài cũ
     all_items = new_items + old_items
-    if len(all_items) > MAX_ITEMS:
-        all_items = all_items[:MAX_ITEMS]
-        print(f"Giữ lại {MAX_ITEMS} bài mới nhất.")
 
-    # Ghi RSS mới
-    # Ghi RSS mới – chắc chắn thành công
-    output_path = "SKDS/ung_thu_rss.xml"  # Dùng đường dẫn tuyệt đối từ gốc repo
+    # LẤY HẾT BÀI (không giới hạn)
+    print(f"Đã ghép xong: {len(new_items)} bài mới + {len(old_items)} bài cũ = {len(all_items)} bài tổng")
+
+    # Tạo nội dung RSS
+    rss_content = generate_rss(all_items)
+
+    # Ghi file RSS chắc chắn thành công
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(rss_content)
+        file_size = os.path.getsize(output_path)
         print(f"\nĐÃ GHI THÀNH CÔNG FILE RSS: {output_path}")
-        print(f"Kích thước file: {os.path.getsize(output_path)} bytes")
+        print(f"Kích thước file: {file_size} bytes (khoảng {len(all_items)} bài)")
     except Exception as e:
-        print(f"LỖI GHI FILE RSS: {e}")
+        print(f"LỖI GHI FILE: {e}")
 
-    print(f"Tổng: {len(all_items)} bài ({len(new_items)} mới + {len(old_items)} cũ)")
-    print("\n=== KẾT THÚC ===")
+    print("\n=== KẾT THÚC THÀNH CÔNG ===")
