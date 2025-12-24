@@ -72,19 +72,37 @@ def load_existing_links():
 
 
 def create_driver():
-    print("=== KHỞI TẠO CHROME DRIVER VỚI XVFB ===")
+    print("=== KHỞI TẠO CHROME DRIVER VỚI OPTIMIZE CHO GITHUB ACTIONS ===")
     options = Options()
-    # KHÔNG DÙNG HEADLESS NỮA → Xvfb sẽ giả lập màn hình thật
+    # Không dùng headless nữa (Xvfb đã lo display)
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-extensions")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--disable-browser-side-navigation")
+    options.add_argument("--disable-features=VizDisplayCompositor")
     options.add_argument("--window-size=1920,1080")
-    # Các argument khác giữ nguyên
+
+    # ===== THÊM CÁC ARGUMENT FIX TIMEOUT & MEMORY =====
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-ipc-flooding-protection")
+    options.add_argument("--disable-hang-monitor")
+    options.add_argument("--disable-images")  # Tắt load ảnh → nhanh hơn rất nhiều
+    options.add_argument("--disable-javascript")  # Nếu được, nhưng trang cần JS để load thêm → KHÔNG dùng
+    # Thay vào đó dùng:
+    options.add_argument("--blink-settings=imagesEnabled=false")  # Tắt ảnh nhưng giữ JS
+    options.add_argument("--disable-plugins")
+    options.add_argument("--disable-translate")
+    options.add_argument("--disable-notifications")
+    options.add_argument("--disable-web-security")
+    # ================================================
 
     service = ChromeService(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
-    driver.set_page_load_timeout(90)  # Tăng timeout một chút
+    driver.set_page_load_timeout(90)
     return driver
 
 
