@@ -27,7 +27,7 @@ from selenium.common.exceptions import (
 # ====================== CẤU HÌNH ======================
 BASE_URL = "https://suckhoedoisong.vn/y-hoc-360/ung-thu.htm"
 RSS_OUTPUT_PATH = "../ung_thu_rss.xml"          # Output ở thư mục SKDS gốc
-MAX_ITEMS = None                              # Tối đa bài trong RSS
+MAX_ITEMS = 10000                              # Tối đa bài trong RSS
 DUPLICATE_THRESHOLD = 10                       # Gặp 10 bài trùng liên tiếp → dừng
 # =====================================================
 
