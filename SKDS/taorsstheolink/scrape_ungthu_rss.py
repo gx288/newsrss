@@ -16,6 +16,13 @@ import time
 from datetime import datetime
 import os
 import xml.etree.ElementTree as ET
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    NoSuchElementException, TimeoutException, ElementClickInterceptedException
+)
 
 # ====================== CẤU HÌNH ======================
 BASE_URL = "https://suckhoedoisong.vn/y-hoc-360/ung-thu.htm"
@@ -72,36 +79,18 @@ def load_existing_links():
 
 
 def create_driver():
-    print("=== KHỞI TẠO CHROME DRIVER VỚI OPTIMIZE CHO GITHUB ACTIONS ===")
-    options = Options()
-    # Không dùng headless nữa (Xvfb đã lo display)
+    print("=== KHỞI TẠO UNDETECTED CHROME DRIVER ===")
+    options = uc.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-infobars")
-    options.add_argument("--disable-browser-side-navigation")
-    options.add_argument("--disable-features=VizDisplayCompositor")
     options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-extensions")
+    # Tắt ảnh để nhanh hơn (giữ JS để load thêm bài)
+    options.add_argument("--blink-settings=imagesEnabled=false")
 
-    # ===== THÊM CÁC ARGUMENT FIX TIMEOUT & MEMORY =====
-    options.add_argument("--disable-background-timer-throttling")
-    options.add_argument("--disable-renderer-backgrounding")
-    options.add_argument("--disable-backgrounding-occluded-windows")
-    options.add_argument("--disable-ipc-flooding-protection")
-    options.add_argument("--disable-hang-monitor")
-    options.add_argument("--disable-images")  # Tắt load ảnh → nhanh hơn rất nhiều
-    options.add_argument("--disable-javascript")  # Nếu được, nhưng trang cần JS để load thêm → KHÔNG dùng
-    # Thay vào đó dùng:
-    options.add_argument("--blink-settings=imagesEnabled=false")  # Tắt ảnh nhưng giữ JS
-    options.add_argument("--disable-plugins")
-    options.add_argument("--disable-translate")
-    options.add_argument("--disable-notifications")
-    options.add_argument("--disable-web-security")
-    # ================================================
-
-    service = ChromeService(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    # undetected-chromedriver tự xử lý headless + stealth
+    driver = uc.Chrome(options=options, use_subprocess=True)
     driver.set_page_load_timeout(90)
     return driver
 
