@@ -99,7 +99,7 @@ def scrape_page():
     driver = create_driver()
     
     # Retry driver.get() tối đa 2 lần
-    for attempt in range(2):
+    for attempt in range(5):
         try:
             print(f"Mở trang (lần {attempt + 1}): {BASE_URL}")
             driver.get(BASE_URL)
