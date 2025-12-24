@@ -30,10 +30,19 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add SKDS/ung_thu_rss.xml || echo "Không tìm thấy file mới"
-        if git diff --staged --quiet; then
-          echo "Không có thay đổi → không commit"
+        
+        # List file để debug (bạn sẽ thấy file có tồn tại)
+        echo "Danh sách file trong SKDS:"
+        ls -la SKDS/
+        
+        # Add toàn bộ thư mục SKDS
+        git add SKDS/ung_thu_rss.xml
+        
+        # Kiểm tra có thay đổi không
+        if git diff --cached --exit-code; then
+          echo "Không có thay đổi mới → không commit"
         else
-          git commit -m "Cập nhật RSS ung thư $(date +'%Y-%m-%d %H:%M')"
+          git commit -m "Cập nhật RSS ung thư $(date +'%Y-%m-%d %H:%M') (+$(git diff --cached --name-only | wc -l) file)"
           git push
+          echo "Đã commit và push thành công!"
         fi
