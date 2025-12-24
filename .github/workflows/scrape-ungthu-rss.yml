@@ -15,12 +15,11 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Cài dependencies + Xvfb
+    - name: Cài dependencies + Xvfb + distutils fix
       run: |
         pip install selenium undetected-chromedriver webdriver-manager
         sudo apt-get update -qq
-        sudo apt-get install -y xvfb
-
+        sudo apt-get install -y xvfb python3-distutils  # Cài distutils
     - name: Chạy scraper với Xvfb
       run: |
         xvfb-run -a -s "-screen 0 1920x1080x24 +extension RANDR" python -u SKDS/taorsstheolink/scrape_ungthu_rss.py
