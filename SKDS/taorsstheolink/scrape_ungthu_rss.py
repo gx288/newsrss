@@ -88,15 +88,22 @@ def create_driver():
     options.add_argument("--disable-extensions")
     # Tắt ảnh để nhanh hơn (giữ JS để load thêm bài)
     options.add_argument("--blink-settings=imagesEnabled=false")
-    # Thêm các tùy chọn stealth khác nếu cần (để tránh bị detect bot tốt hơn)
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
+    
+    # KHÔNG thêm excludeSwitches hoặc useAutomationExtension nữa → uc tự xử lý
+    # Nếu muốn thêm stealth cơ bản (thường không cần):
+    # options.add_argument("--disable-blink-features=AutomationControlled")  # optional, uc đã patch
+
+    # Lấy major version từ env (set trong workflow)
+    import os
+    chrome_major_str = os.getenv('CHROME_MAJOR')
+    version_main = int(chrome_major_str) if chrome_major_str and chrome_major_str.isdigit() else 145  # fallback nếu workflow chưa set
+
+    print(f"Sử dụng version_main={version_main} cho undetected_chromedriver (Chrome major trên runner)")
 
     driver = uc.Chrome(
         options=options,
         use_subprocess=True,
-        version_main=145  # <--- THÊM DÒNG NÀY: buộc dùng ChromeDriver cho Chrome 145
+        version_main=version_main   # tự động khớp Chrome 145 (hoặc mới hơn sau này)
     )
     driver.set_page_load_timeout(90)
     return driver
