@@ -88,9 +88,16 @@ def create_driver():
     options.add_argument("--disable-extensions")
     # Tắt ảnh để nhanh hơn (giữ JS để load thêm bài)
     options.add_argument("--blink-settings=imagesEnabled=false")
+    # Thêm các tùy chọn stealth khác nếu cần (để tránh bị detect bot tốt hơn)
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
 
-    # undetected-chromedriver tự xử lý headless + stealth
-    driver = uc.Chrome(options=options, use_subprocess=True)
+    driver = uc.Chrome(
+        options=options,
+        use_subprocess=True,
+        version_main=145  # <--- THÊM DÒNG NÀY: buộc dùng ChromeDriver cho Chrome 145
+    )
     driver.set_page_load_timeout(90)
     return driver
 
