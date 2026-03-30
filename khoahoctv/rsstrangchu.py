@@ -16,7 +16,7 @@ base_url = "https://khoahoc.tv/"
 num_threads = 8                    # Giảm để tránh bị block
 output_dir = "khoahoctv"
 output_file = os.path.join(output_dir, "rsstrangchu.rss")
-max_pages = 1011                   # Thay đổi khi test
+max_pages = 101111                   # Thay đổi khi test
 # ===============================================
 
 # Danh sách User-Agent rotate để tránh bị detect
