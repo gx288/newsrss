@@ -1,49 +1,51 @@
-name: Lay Anh & Views Khoahoc.tv - Daily Run
+name: KhoaHoc.tv Full - Crawl + RSS + Sheet
 
 on:
   schedule:
-    - cron: '0 23 * * *'      # Chạy lúc 23:00 UTC = 6:00 sáng Việt Nam hôm sau
-  workflow_dispatch:          # Cho phép chạy thủ công
+    - cron: '0 0 * * *'        # Chạy 1 lần/ngày lúc 00:00 UTC (~7h sáng VN)
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: 'Số trang tối đa (all hoặc số cụ thể)'
+        required: false
+        default: 'all'
 
 jobs:
-  update-images-and-views:
+  full-task:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install gspread google-auth beautifulsoup4 requests lxml
+          pip install --upgrade pip
+          pip install requests beautifulsoup4 lxml gspread google-auth
 
-      - name: Tạo file credentials.json từ GitHub Secret
+      - name: Tạo credentials.json
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
         run: |
           mkdir -p khoahoctv
           echo "$GOOGLE_SHEETS_CREDENTIALS" > khoahoctv/credentials.json
 
-      - name: Chạy script lấy ảnh + lượt xem
+      - name: Prepare max_pages
         run: |
-          python -u khoahoctv/layanhkhoahocyhoc.py
+          echo "MAX_PAGES=${{ github.event.inputs.max_pages || 'all' }}" >> $GITHUB_ENV
 
-      - name: Commit changes if any
+      - name: Chạy full script
+        run: |
+          python -u khoahoctv/khoahoc_full.py
+
+      - name: Commit & Push
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add khoahoctv/
-          if git diff --staged --quiet; then
-            echo "Không có thay đổi nào trong sheet."
-          else
-            git commit -m "Auto update ảnh + lượt xem KhoaHoc.tv [$(date +'%Y-%m-%d %H:%M:%S')]"
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto update KhoaHoc.tv Full [$(date +'%Y-%m-%d %H:%M:%S')]"
             git push
-            echo "✅ Đã commit thay đổi vào repository."
           fi
