@@ -15,7 +15,7 @@ import time
 base_url = "https://khoahoc.tv/"
 num_threads = 8                    # Giảm để tránh bị block
 output_dir = "khoahoctv"
-output_file = os.path.join(output_dir, "khoahoc_tv.rss")
+output_file = os.path.join(output_dir, "rsstrangchu.rss")
 max_pages = 1011                   # Thay đổi khi test
 # ===============================================
 
