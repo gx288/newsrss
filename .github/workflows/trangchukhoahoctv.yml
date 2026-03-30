@@ -1,0 +1,45 @@
+name: Generate KhoaHoc.tv Trang Chủ RSS
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'      # Chạy mỗi 6 tiếng
+  workflow_dispatch:           # Cho phép chạy thủ công từ GitHub
+
+jobs:
+  scrape-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 lxml
+
+      - name: Run scraper script (Trang chủ KhoaHoc.tv)
+        run: |
+          python -u khoahoctv/rsstrangchu.py
+
+      - name: Commit and push RSS file
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Thêm file RSS
+          git add khoahoctv/rsstrangchu.rss
+          
+          # Kiểm tra có thay đổi không
+          if git diff --staged --quiet; then
+            echo "Không có thay đổi nào trong RSS. Có thể không có bài mới hoặc script dừng sớm."
+          else
+            git commit -m "Auto update RSS KhoaHoc.tv Trang chủ [$(date +'%Y-%m-%d %H:%M:%S')]"
+            git push
+            echo "✅ RSS đã được cập nhật và push thành công!"
+          fi
