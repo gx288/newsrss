@@ -22,7 +22,7 @@ output_dir = "khoahoctv"
 output_file = os.path.join(output_dir, "rsstrangchu.rss")
 max_pages_input = os.getenv('MAX_PAGES', '1011')
 if max_pages_input.lower() in ['all', '0', '']:
-    max_pages = 2000
+    max_pages = 200000
 else:
     max_pages = int(max_pages_input)
 
