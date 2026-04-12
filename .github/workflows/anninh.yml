@@ -1,0 +1,32 @@
+name: 24h An ninh Hình sự to Google Sheet
+
+on:
+  schedule:
+    - cron: '2 * * * *'      # Chạy mỗi giờ lúc 2 phút (tức ~8:02 AM VN)
+  workflow_dispatch:         # Cho phép chạy thủ công từ GitHub
+
+jobs:
+  post-to-gsheet:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY2 }}
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          # SHEET_NAME đã được hardcode trong script nên không cần truyền qua secret nữa
+        run: |
+          python -u anninh/taocontentanninh.py
