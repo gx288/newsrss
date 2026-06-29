@@ -90,20 +90,28 @@ def get_gemini_model():
         
     print(f"[*] Các model khả dụng trong tài khoản: {available_models}")
     
+    # Lọc bỏ các model không chuyên viết text (âm thanh, hình ảnh, robot, chuyên ngành...)
+    ignored_keywords = ['image', 'tts', 'audio', 'clip', 'robotics', 'computer-use', 'antigravity', 'deep-research', 'nano', 'lyria']
+    text_models = [m for m in available_models if not any(k in m for k in ignored_keywords)]
+    
+    # Ưu tiên các model đời mới nhất (3.5, 3.1, 3.0, 2.5) chuyên viết text
     priority = [
-        "gemini-2.5-flash", "gemini-2.5-pro",
-        "gemini-2.0-flash", "gemini-2.0-pro",
-        "gemini-1.5-flash", "gemini-1.5-pro",
-        "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"
+        "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3-pro-preview", 
+        "gemini-3.1-flash-lite", "gemini-3-flash-preview", 
+        "gemini-2.5-pro", "gemini-2.5-flash", 
+        "gemini-pro-latest", "gemini-flash-latest",
+        "gemini-2.0-pro", "gemini-2.0-flash"
     ]
     
-    models_to_try = [p for p in priority if p in available_models]
-    for m in available_models:
+    models_to_try = [p for p in priority if p in text_models]
+    
+    # Bổ sung các model text còn lại vào cuối danh sách dự phòng
+    for m in text_models:
         if m not in models_to_try:
             models_to_try.append(m)
             
     if not models_to_try:
-        models_to_try = priority # Fallback nếu list_models thất bại
+        models_to_try = priority # Fallback
 
     for model_name in models_to_try:
         try:
