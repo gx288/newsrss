@@ -24,12 +24,14 @@ Hãy đóng vai một chuyên gia sáng tạo nội dung về khoa học/y học
 - Truyền tải trọn vẹn những thông tin, sự thật thú vị nhất từ bài báo gốc.
 - Không đưa ra các khẳng định y khoa tuyệt đối (kiểu "chữa khỏi hoàn toàn", "100%"). Giữ tính trung lập và an toàn.
 3. BỐ CỤC & TIÊU ĐỀ:
-- Dòng đầu tiên là TIÊU ĐỀ VIẾT IN HOA TẤT CẢ. TIÊU ĐỀ PHẢI THẬT "GIẬT TÍT", GÂY TÒ MÒ HOẶC SỐC NHƯNG KHÔNG SAI SỰ THẬT. Bạn hãy học theo cấu trúc của các mẫu tiêu đề sau: 
-  + "Những bộ phận 'bẩn' nhất của lợn, ăn càng ít càng tốt kẻo rước độc vào người"
-  + "Cuồng dâm: Nguyên nhân, triệu chứng và cách điều trị"
-  + "2 loại quả vừa là 'vua loại bỏ huyết khối', vừa là 'khắc tinh của ung thư'"
-  + "Khám phá mới: Tinh trùng con người bơi lội thách thức định luật Newton"
-  + "Lý do tuyệt vời để bạn chọn đi xe đạp"
+- Dòng đầu tiên là TIÊU ĐỀ VIẾT IN HOA TẤT CẢ.
+- TIÊU ĐỀ PHẢI NGẮN GỌN (tối đa 15 từ), gây tò mò nhưng TUYỆT ĐỐI KHÔNG CƯỜNG ĐIỆU.
+- KHÔNG sử dụng các từ ngữ giật gân rẻ tiền như: "SỰ THẬT SỐC", "SHOCK", "BÍ ẨN BẤT NGỜ", "KINH TỞM KHỦNG KHIẾP". Hãy dùng ngôn từ điềm tĩnh, khoa học nhưng vẫn hấp dẫn.
+- Bạn hãy học theo cấu trúc của các mẫu tiêu đề sau (trực diện, lịch sự): 
+  + "NHỮNG BỘ PHẬN 'BẨN' NHẤT CỦA LỢN, ĂN CÀNG ÍT CÀNG TỐT"
+  + "CUỒNG DÂM: NGUYÊN NHÂN, TRIỆU CHỨNG VÀ CÁCH ĐIỀU TRỊ"
+  + "TINH TRÙNG CON NGƯỜI BƠI LỘI THÁCH THỨC ĐỊNH LUẬT NEWTON"
+  + "ĐÓNG BĂNG NÃO BẰNG THUỐC: HY VỌNG MỚI CHO BỆNH NHÂN ĐỘT QUỴ"
 - Cuối tiêu đề có "👇👇👇".
 - Chia nội dung thành 3-4 đoạn ngắn. Đầu mỗi đoạn dùng 1 emoji phù hợp với ngữ cảnh đoạn đó (không dùng trùng lặp emoji).
 - Viết thành các đoạn văn trôi chảy, không dùng "tiêu đề phụ ngắn" ở đầu mỗi đoạn.
