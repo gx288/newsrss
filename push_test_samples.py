@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
-SHEET_NAME = "Test_Samples_Raw"
+SHEET_NAME = "Filtered_Samples_Raw"
 SERVICE_ACCOUNT_FILE = 'khoahoctv/credentials.json'
 
 def init_gsheet():
@@ -70,9 +70,9 @@ def main():
     
     rows_to_push = []
     print("[*] Lấy 10 bài MNT...")
-    rows_to_push.extend(process_file("mnt_test.json", 10))
+    rows_to_push.extend(process_file("mnt_filtered_samples.json", 10))
     print("[*] Lấy 10 bài Healthline...")
-    rows_to_push.extend(process_file("healthline_test.json", 10))
+    rows_to_push.extend(process_file("healthline_filtered_samples.json", 10))
     
     if rows_to_push:
         print(f"[*] Tổng cộng {len(rows_to_push)} bài. Đang đẩy lên Google Sheet '{SHEET_NAME}'...")
