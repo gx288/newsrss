@@ -209,10 +209,25 @@ def main():
         print(e)
         return
 
-    records = sheet.get_all_records()
-    if not records:
+    try:
+        values = sheet.get_all_values()
+    except Exception as e:
+        print(f"[-] Lỗi khi lấy dữ liệu sheet: {e}")
+        return
+        
+    if len(values) <= 1:
         print("[-] Không có dữ liệu trong sheet.")
         return
+        
+    headers = values[0]
+    records = []
+    for row_values in values[1:]:
+        row_dict = {}
+        for idx, val in enumerate(row_values):
+            if idx < len(headers):
+                # Nếu có cột trùng tên, nó sẽ tự đè lên cột trước đó (tránh lỗi duplicate header)
+                row_dict[headers[idx]] = val
+        records.append(row_dict)
 
     processed = 0
     updates = []
@@ -274,7 +289,19 @@ def main():
             print(f"❌ Lỗi khi cập nhật Google Sheets: {e}")
 
     # Sau khi xử lý xong, tải lại toàn bộ records mới nhất để tạo RSS
-    updated_records = sheet.get_all_records()
+    try:
+        updated_values = sheet.get_all_values()
+        updated_headers = updated_values[0]
+        updated_records = []
+        for row_values in updated_values[1:]:
+            row_dict = {}
+            for idx, val in enumerate(row_values):
+                if idx < len(updated_headers):
+                    row_dict[updated_headers[idx]] = val
+            updated_records.append(row_dict)
+    except Exception as e:
+        print(f"[-] Lỗi khi lấy dữ liệu tạo RSS: {e}")
+        updated_records = records # fallback dùng records cũ
     create_rss(updated_records)
     print("\n🎉 KẾT THÚC!")
 
