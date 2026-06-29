@@ -77,7 +77,35 @@ def init_gsheet():
 
 def get_gemini_model():
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    for model_name in MODEL_PRIORITY:
+    
+    print("[*] Đang tải danh sách model khả dụng từ Google...")
+    available_models = []
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                model_name = m.name.replace('models/', '')
+                available_models.append(model_name)
+    except Exception as e:
+        print(f"❌ Lỗi khi lấy danh sách model: {e}")
+        
+    print(f"[*] Các model khả dụng trong tài khoản: {available_models}")
+    
+    priority = [
+        "gemini-2.5-flash", "gemini-2.5-pro",
+        "gemini-2.0-flash", "gemini-2.0-pro",
+        "gemini-1.5-flash", "gemini-1.5-pro",
+        "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"
+    ]
+    
+    models_to_try = [p for p in priority if p in available_models]
+    for m in available_models:
+        if m not in models_to_try:
+            models_to_try.append(m)
+            
+    if not models_to_try:
+        models_to_try = priority # Fallback nếu list_models thất bại
+
+    for model_name in models_to_try:
         try:
             print(f"[*] Thử model: {model_name}...")
             model = genai.GenerativeModel(model_name)
@@ -85,8 +113,13 @@ def get_gemini_model():
             print(f"   => Đã kết nối model: {model_name}")
             return model
         except Exception as e:
-            print(f"   [!] Model {model_name} lỗi: {e}")
-    raise Exception("Không kết nối được bất kỳ model Gemini nào. Hết quota?")
+            err_str = str(e).lower()
+            if "429" in err_str or "quota" in err_str:
+                print(f"   [!] Model {model_name} hết QUOTA tạm thời.")
+            else:
+                print(f"   [!] Model {model_name} lỗi: {e}")
+                
+    raise Exception("Không kết nối được bất kỳ model Gemini nào. Hết quota toàn bộ hệ thống?")
 
 # ==================== CORE ====================
 def rewrite_article(model, title, description):
