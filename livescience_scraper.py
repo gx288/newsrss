@@ -58,7 +58,8 @@ def get_recent_sitemaps():
         sitemaps = [loc.text for loc in soup.find_all('loc') if re.search(r'sitemap-\d{4}-\d{2}\.xml', loc.text)]
         # Sort sitemaps to get newest first (e.g. sitemap-2024-05.xml)
         sitemaps.sort(reverse=True)
-        return sitemaps[:3]  # Lấy 3 tháng gần nhất để cào
+        # Quét tất cả các tháng trong lịch sử thay vì chỉ 3 tháng
+        return sitemaps
     except Exception as e:
         print(f"❌ Lỗi tải sitemap index: {e}")
         return []
@@ -140,8 +141,8 @@ def main():
     new_links = [l for l in all_health_links if l not in existing_links]
     print(f"[*] Tìm thấy {len(new_links)} bài MỚI hoàn toàn.")
     
-    # Cào thử 50 bài để không quá tải (có thể tăng lên)
-    limit = 50
+    # Cào thử 200 bài để không quá tải (có thể tăng lên)
+    limit = 200
     links_to_scrape = new_links[:limit]
     
     new_rows = []
