@@ -64,6 +64,10 @@ def main():
     rows_to_push = []
     for item in data:
         if item['link'] not in existing_links:
+            desc = item['description']
+            if len(desc) > 49000:
+                desc = desc[:49000] + "\n...[TRUNCATED]"
+                
             rows_to_push.append([
                 item['title'],
                 item['pubdate'],
@@ -74,7 +78,7 @@ def main():
                 "NEW",
                 "",
                 "",
-                item['description']
+                desc
             ])
             
     if not rows_to_push:
