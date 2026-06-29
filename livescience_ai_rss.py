@@ -92,38 +92,34 @@ def get_gemini_model():
 # ==================== CORE ====================
 def rewrite_article(model, title, description):
     prompt = PROMPT_TEMPLATE.format(title=title, description=description)
-    try:
-        safety_settings = {
-            'HATE': 'BLOCK_NONE',
-            'HARASSMENT': 'BLOCK_NONE',
-            'SEXUAL' : 'BLOCK_NONE',
-            'DANGEROUS' : 'BLOCK_NONE'
-        }
-        response = model.generate_content(prompt, safety_settings=safety_settings)
-        text = response.text.strip()
+    safety_settings = {
+        'HATE': 'BLOCK_NONE',
+        'HARASSMENT': 'BLOCK_NONE',
+        'SEXUAL' : 'BLOCK_NONE',
+        'DANGEROUS' : 'BLOCK_NONE'
+    }
+    response = model.generate_content(prompt, safety_settings=safety_settings)
+    text = response.text.strip()
+    
+    if text.upper() == "SKIP" or "SKIP" in text.upper()[:10]:
+        return "SKIP", "SKIP"
         
-        if text.upper() == "SKIP" or "SKIP" in text.upper()[:10]:
-            return "SKIP", "SKIP"
-            
-        # Tách tiêu đề và nội dung
-        parts = text.split("👇👇👇")
-        if len(parts) >= 2:
-            new_title = parts[0].replace("👇👇👇", "").strip()
-            new_title = re.sub(r'^\**TIÊU ĐỀ:?\**\s*', '', new_title, flags=re.IGNORECASE)
-            new_title = new_title.replace("**", "")
-            
-            new_content = parts[1].strip()
-            new_content = new_content.replace("**", "")
-            return new_title, new_content
-        else:
-            # Fallback nếu AI trả về không có 👇👇👇
-            lines = text.split("\n")
-            new_title = lines[0].strip().replace("**", "")
-            new_content = "\n".join(lines[1:]).strip().replace("**", "")
-            return new_title, new_content
-    except Exception as e:
-        print(f"❌ Lỗi AI: {e}")
-        return None, None
+    # Tách tiêu đề và nội dung
+    parts = text.split("👇👇👇")
+    if len(parts) >= 2:
+        new_title = parts[0].replace("👇👇👇", "").strip()
+        new_title = re.sub(r'^\**TIÊU ĐỀ:?\**\s*', '', new_title, flags=re.IGNORECASE)
+        new_title = new_title.replace("**", "")
+        
+        new_content = parts[1].strip()
+        new_content = new_content.replace("**", "")
+        return new_title, new_content
+    else:
+        # Fallback nếu AI trả về không có 👇👇👇
+        lines = text.split("\n")
+        new_title = lines[0].strip().replace("**", "")
+        new_content = "\n".join(lines[1:]).strip().replace("**", "")
+        return new_title, new_content
 
 def create_rss(all_records):
     print("\n=== ĐANG TẠO RSS ===")
@@ -179,6 +175,7 @@ def main():
         return
 
     processed = 0
+    updates = []
     for i, row in enumerate(records):
         if processed >= BATCH_SIZE:
             print(f"[*] Đã xử lý đủ limit hôm nay ({BATCH_SIZE} bài). Dừng lại để tiết kiệm quota.")
@@ -190,27 +187,51 @@ def main():
             print(f"\n=> Đang xử lý: {title[:60]}...")
             
             row_idx = i + 2
-            new_title, new_content = rewrite_article(model, title, desc)
+            
+            # Retry logic for AI Quota Exceeded (429)
+            new_title, new_content = None, None
+            retry_count = 3
+            while retry_count > 0:
+                try:
+                    new_title, new_content = rewrite_article(model, title, desc)
+                    break
+                except Exception as e:
+                    print(f"   [!] Lỗi AI ({e}). Thử lại... ({retry_count} lần nữa)")
+                    retry_count -= 1
+                    time.sleep(5)
+                    if retry_count == 0:
+                        print("   [!] Đổi sang model Gemini khác do lỗi liên tục...")
+                        try:
+                            model = get_gemini_model()
+                            new_title, new_content = rewrite_article(model, title, desc)
+                        except Exception as e2:
+                            print(f"   [-] Vẫn lỗi: {e2}")
             
             if new_title == "SKIP":
                 print("   [-] Bỏ qua bài tổng hợp (SKIPPED).")
                 row['Status'] = 'SKIPPED_ROUNDUP'
-                sheet.update(f'G{row_idx}', [['SKIPPED_ROUNDUP']])
+                updates.append({'range': f'G{row_idx}', 'values': [['SKIPPED_ROUNDUP']]})
             elif new_title and new_content:
-                # Update records array
                 row['TranslatedTitle'] = new_title
                 row['TranslatedContent'] = new_content
                 row['Status'] = 'DONE'
                 
-                # Update sheet (index is i + 2 because header is row 1)
-                sheet.update(f'G{row_idx}:I{row_idx}', [['DONE', new_title, new_content]])
+                updates.append({'range': f'G{row_idx}:I{row_idx}', 'values': [['DONE', new_title, new_content]]})
                 print(f"   [+] OK! Tiêu đề mới: {new_title}")
                 processed += 1
-                time.sleep(2) # Tránh rate limit
+                time.sleep(2) # Tránh rate limit AI
             else:
                 print("   [-] Dịch thất bại, bỏ qua.")
                 row['Status'] = 'ERROR'
-                sheet.update(f'G{row_idx}', [['ERROR']])
+                updates.append({'range': f'G{row_idx}', 'values': [['ERROR']]})
+
+    if updates:
+        print(f"\n[*] Đang cập nhật {len(updates)} dòng lên Google Sheets cùng lúc (Batch Update)...")
+        try:
+            sheet.batch_update(updates)
+            print("✅ Cập nhật Google Sheets thành công!")
+        except Exception as e:
+            print(f"❌ Lỗi khi cập nhật Google Sheets: {e}")
 
     # Sau khi xử lý xong, tải lại toàn bộ records mới nhất để tạo RSS
     updated_records = sheet.get_all_records()
