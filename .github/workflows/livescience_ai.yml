@@ -1,0 +1,49 @@
+name: LiveScience AI RSS Generator
+
+on:
+  schedule:
+    - cron: '0 2,14 * * *'    # Chạy 2 lần/ngày để giải quyết hàng đợi (tiết kiệm quota)
+  workflow_dispatch:          # Cho phép chạy thủ công
+
+jobs:
+  run-ai:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-generativeai gspread google-auth
+
+      - name: Create credentials.json
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: |
+          mkdir -p khoahoctv
+          echo "$GOOGLE_SHEETS_CREDENTIALS" > khoahoctv/credentials.json
+
+      - name: Run AI Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -u livescience_ai_rss.py
+
+      - name: Commit and push RSS file
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add livescience_vi.rss
+          if git status --porcelain | grep -q "."; then
+            git commit -m "Auto update LiveScience RSS [$(date +'%Y-%m-%d %H:%M:%S')]"
+            git push
+            echo "✅ RSS file đã được update!"
+          else
+            echo "[-] Không có cập nhật RSS mới."
+          fi
