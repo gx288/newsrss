@@ -90,9 +90,9 @@ def get_gemini_model():
         
     print(f"[*] Các model khả dụng trong tài khoản: {available_models}")
     
-    # Lọc bỏ các model không chuyên viết text (âm thanh, hình ảnh, robot, chuyên ngành...)
-    ignored_keywords = ['image', 'tts', 'audio', 'clip', 'robotics', 'computer-use', 'antigravity', 'deep-research', 'nano', 'lyria']
-    text_models = [m for m in available_models if not any(k in m for k in ignored_keywords)]
+    # Lọc bỏ các model không chuyên viết text (gemma, âm thanh, hình ảnh, robot, chuyên ngành...)
+    ignored_keywords = ['gemma', 'image', 'tts', 'audio', 'clip', 'robotics', 'computer-use', 'antigravity', 'deep-research', 'nano', 'lyria']
+    text_models = [m for m in available_models if 'gemini' in m.lower() and not any(k in m.lower() for k in ignored_keywords)]
     
     # Ưu tiên các model đời mới nhất (3.5, 3.1, 3.0, 2.5) chuyên viết text
     priority = [
