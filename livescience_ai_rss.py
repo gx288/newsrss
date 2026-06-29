@@ -93,9 +93,18 @@ def get_gemini_model():
 def rewrite_article(model, title, description):
     prompt = PROMPT_TEMPLATE.format(title=title, description=description)
     try:
-        response = model.generate_content(prompt)
+        safety_settings = {
+            'HATE': 'BLOCK_NONE',
+            'HARASSMENT': 'BLOCK_NONE',
+            'SEXUAL' : 'BLOCK_NONE',
+            'DANGEROUS' : 'BLOCK_NONE'
+        }
+        response = model.generate_content(prompt, safety_settings=safety_settings)
         text = response.text.strip()
         
+        if text.upper() == "SKIP" or "SKIP" in text.upper()[:10]:
+            return "SKIP", "SKIP"
+            
         # Tách tiêu đề và nội dung
         parts = text.split("👇👇👇")
         if len(parts) >= 2:
@@ -180,15 +189,20 @@ def main():
             desc = row.get('FullTextEn')
             print(f"\n=> Đang xử lý: {title[:60]}...")
             
+            row_idx = i + 2
             new_title, new_content = rewrite_article(model, title, desc)
-            if new_title and new_content:
+            
+            if new_title == "SKIP":
+                print("   [-] Bỏ qua bài tổng hợp (SKIPPED).")
+                row['Status'] = 'SKIPPED_ROUNDUP'
+                sheet.update(f'G{row_idx}', [['SKIPPED_ROUNDUP']])
+            elif new_title and new_content:
                 # Update records array
                 row['TranslatedTitle'] = new_title
                 row['TranslatedContent'] = new_content
                 row['Status'] = 'DONE'
                 
                 # Update sheet (index is i + 2 because header is row 1)
-                row_idx = i + 2
                 sheet.update(f'G{row_idx}:I{row_idx}', [['DONE', new_title, new_content]])
                 print(f"   [+] OK! Tiêu đề mới: {new_title}")
                 processed += 1
@@ -196,7 +210,7 @@ def main():
             else:
                 print("   [-] Dịch thất bại, bỏ qua.")
                 row['Status'] = 'ERROR'
-                sheet.update(f'G{i+2}', [['ERROR']])
+                sheet.update(f'G{row_idx}', [['ERROR']])
 
     # Sau khi xử lý xong, tải lại toàn bộ records mới nhất để tạo RSS
     updated_records = sheet.get_all_records()
