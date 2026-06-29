@@ -180,7 +180,7 @@ def create_rss(all_records):
         ET.SubElement(item, "guid", isPermaLink="true").text = item_data['Link']
         ET.SubElement(item, "pubDate").text = item_data.get('PubDate', '')
         
-        content = item_data.get('TranslatedContent', item_data['Description'])
+        content = item_data.get('TranslatedContent', item_data.get('FullTextEn', ''))
         img = item_data.get('Image', '')
         desc_html = content.replace('\n', '<br/>')
         if img:
