@@ -13,8 +13,8 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # ==================== CẤU HÌNH ====================
 SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
-SHEET_NAME = "Khoahocyhoc"
-COLUMN_INDEX = 12        # Cột chứa link (cột 12)
+SHEET_NAME = "LiveScience_Raw"
+COLUMN_INDEX = 16        # Cột Q chứa link (cột 16)
 REFERRER_CODE = "432322"
 
 DIR = os.path.dirname(__file__)
@@ -95,14 +95,41 @@ try:
 
     print(f"Đã chạy thành công {len(used_links)} link trước đây")
 
+    import time as time_mod
     encoded_sheet = urllib.parse.quote_plus(SHEET_NAME)
-    csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}"
+    # Thêm timestamp t=... để chống cache của Google Sheets (tránh việc vừa nhập data xong tool không nhận diện được ngay)
+    csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}&t={int(time_mod.time())}"
   
     df = pd.read_csv(csv_url)
     print(f"Đọc sheet thành công - {len(df)} dòng")
 
-    col_i = df.iloc[:, COLUMN_INDEX].dropna().astype(str).str.strip()
-    all_links = col_i[col_i.str.startswith('http')].tolist()[::-1]
+    # Cố gắng tìm cột có chữ "VideoFB", nếu không có thì lấy theo COLUMN_INDEX
+    matched_col = None
+    for col in df.columns:
+        if 'VideoFB' in str(col):
+            matched_col = col
+            break
+            
+    if matched_col:
+        col_i = df[matched_col].dropna().astype(str).str.strip()
+    else:
+        # Fallback nếu không có dòng tiêu đề VideoFB, thử lấy cột index 16
+        try:
+            col_i = df.iloc[:, COLUMN_INDEX].dropna().astype(str).str.strip()
+        except IndexError:
+            raise Exception(f"Không tìm thấy cột VideoFB và sheet cũng không có đủ {COLUMN_INDEX+1} cột!")
+    
+    all_links = []
+    for val in col_i:
+        val_str = str(val).strip()
+        if val_str.lower().startswith('http'):
+            all_links.append(val_str)
+        elif val_str.lower().startswith('fb:'):
+            fb_id = val_str[3:].strip()
+            link = f"https://www.facebook.com/{fb_id}"
+            all_links.append(link)
+            
+    all_links = all_links[::-1]
 
     for link in all_links:
         if link not in used_links:
