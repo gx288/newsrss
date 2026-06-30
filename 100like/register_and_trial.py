@@ -108,61 +108,77 @@ try:
     import time as time_mod
     
     # Lựa chọn cấu hình luân phiên dựa trên số chẵn/lẻ của len(used_links)
-    config = SHEET_CONFIGS[len(used_links) % 2]
-    SHEET_NAME = config["SHEET_NAME"]
-    COLUMN_INDEX = config["COLUMN_INDEX"]
-    HEADER_HINT = config["HEADER_HINT"]
+    preferred_idx = len(used_links) % 2
+    indices_to_try = [preferred_idx, 1 - preferred_idx]
     
-    print(f"🔄 LUÂN PHIÊN: Đang chọn sheet '{SHEET_NAME}', tìm cột '{HEADER_HINT}'")
+    selected_link = "KHÔNG CÓ LINK MỚI"
 
-    encoded_sheet = urllib.parse.quote_plus(SHEET_NAME)
-    # Thêm timestamp t=... để chống cache của Google Sheets (tránh việc vừa nhập data xong tool không nhận diện được ngay)
-    csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}&t={int(time_mod.time())}"
-  
-    df = pd.read_csv(csv_url)
-    print(f"Đọc sheet thành công - {len(df)} dòng")
+    for idx in indices_to_try:
+        config = SHEET_CONFIGS[idx]
+        SHEET_NAME = config["SHEET_NAME"]
+        COLUMN_INDEX = config["COLUMN_INDEX"]
+        HEADER_HINT = config["HEADER_HINT"]
+        
+        print(f"\n🔄 Đang kiểm tra sheet '{SHEET_NAME}', tìm cột '{HEADER_HINT}'...")
 
-    # Cố gắng tìm cột có chữ HEADER_HINT
-    matched_col = None
-    for col in df.columns:
-        if HEADER_HINT == "Link":
-            if str(col).strip() == "Link":
-                matched_col = col
-                break
-        else:
-            if HEADER_HINT in str(col):
-                matched_col = col
-                break
-            
-    if matched_col:
-        col_i = df[matched_col].dropna().astype(str).str.strip()
-    else:
-        # Fallback nếu không có dòng tiêu đề, thử lấy cột index
+        encoded_sheet = urllib.parse.quote_plus(SHEET_NAME)
+        # Thêm timestamp t=... để chống cache của Google Sheets
+        csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}&t={int(time_mod.time())}"
+      
         try:
-            col_i = df.iloc[:, COLUMN_INDEX].dropna().astype(str).str.strip()
-        except IndexError:
-            raise Exception(f"Không tìm thấy cột {HEADER_HINT} và sheet cũng không có đủ {COLUMN_INDEX+1} cột!")
-    
-    all_links = []
-    for val in col_i:
-        val_str = str(val).strip()
-        if val_str.lower().startswith('http'):
-            all_links.append(val_str)
-        elif val_str.lower().startswith('fb:'):
-            fb_id = val_str[3:].strip()
-            link = f"https://www.facebook.com/{fb_id}"
-            all_links.append(link)
-            
-    all_links = all_links[::-1]
+            df = pd.read_csv(csv_url)
+            print(f"Đọc sheet thành công - {len(df)} dòng")
+        except Exception as e:
+            print(f"⚠️ Lỗi đọc sheet {SHEET_NAME}: {e}")
+            continue
 
-    for link in all_links:
-        if link not in used_links:
-            selected_link = link
-            print(f"✅ Chọn link mới: {selected_link}")
+        # Cố gắng tìm cột có chữ HEADER_HINT
+        matched_col = None
+        for col in df.columns:
+            if HEADER_HINT == "Link":
+                if str(col).strip() == "Link":
+                    matched_col = col
+                    break
+            else:
+                if HEADER_HINT in str(col):
+                    matched_col = col
+                    break
+                
+        if matched_col:
+            col_i = df[matched_col].dropna().astype(str).str.strip()
+        else:
+            # Fallback nếu không có dòng tiêu đề, thử lấy cột index
+            try:
+                col_i = df.iloc[:, COLUMN_INDEX].dropna().astype(str).str.strip()
+            except IndexError:
+                print(f"⚠️ Không tìm thấy cột {HEADER_HINT} và sheet không đủ cột!")
+                continue
+        
+        all_links = []
+        for val in col_i:
+            val_str = str(val).strip()
+            if val_str.lower().startswith('http'):
+                all_links.append(val_str)
+            elif val_str.lower().startswith('fb:'):
+                fb_id = val_str[3:].strip()
+                link = f"https://www.facebook.com/{fb_id}"
+                all_links.append(link)
+                
+        all_links = all_links[::-1]
+
+        for link in all_links:
+            if link not in used_links:
+                selected_link = link
+                print(f"✅ Chọn link mới: {selected_link}")
+                break
+                
+        if selected_link != "KHÔNG CÓ LINK MỚI":
             break
+        else:
+            print(f"⚠️ Sheet '{SHEET_NAME}' đã hết link mới. Thử sheet dự phòng nếu còn...")
 
     if selected_link == "KHÔNG CÓ LINK MỚI":
-        raise Exception("Hết link mới để chạy!")
+        raise Exception("CẢ 2 SHEET ĐỀU HẾT LINK MỚI ĐỂ CHẠY!")
 
     # Bước 3: Thực hiện trial like
     print("\nBƯỚC 3: Thực hiện trial like")
