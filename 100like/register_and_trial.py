@@ -13,8 +13,8 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # ==================== CẤU HÌNH ====================
 SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
-SHEET_NAME = "LiveScience_Raw"
-COLUMN_INDEX = 16        # Cột Q chứa link (cột 16)
+SHEET_NAME = "reels"
+COLUMN_INDEX = 8        # Cột I chứa link (cột index 8)
 REFERRER_CODE = "432322"
 
 DIR = os.path.dirname(__file__)
@@ -103,21 +103,21 @@ try:
     df = pd.read_csv(csv_url)
     print(f"Đọc sheet thành công - {len(df)} dòng")
 
-    # Cố gắng tìm cột có chữ "VideoFB", nếu không có thì lấy theo COLUMN_INDEX
+    # Cố gắng tìm cột có chữ "Link", nếu không có thì lấy theo COLUMN_INDEX
     matched_col = None
     for col in df.columns:
-        if 'VideoFB' in str(col):
+        if str(col).strip() == 'Link':
             matched_col = col
             break
             
     if matched_col:
         col_i = df[matched_col].dropna().astype(str).str.strip()
     else:
-        # Fallback nếu không có dòng tiêu đề VideoFB, thử lấy cột index 16
+        # Fallback nếu không có dòng tiêu đề Link, thử lấy cột index 8
         try:
             col_i = df.iloc[:, COLUMN_INDEX].dropna().astype(str).str.strip()
         except IndexError:
-            raise Exception(f"Không tìm thấy cột VideoFB và sheet cũng không có đủ {COLUMN_INDEX+1} cột!")
+            raise Exception(f"Không tìm thấy cột Link và sheet cũng không có đủ {COLUMN_INDEX+1} cột!")
     
     all_links = []
     for val in col_i:
