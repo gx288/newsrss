@@ -13,8 +13,18 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # ==================== CẤU HÌNH ====================
 SHEET_ID = "14tqKftTqlesnb0NqJZU-_f1EsWWywYqO36NiuDdmaTo"
-SHEET_NAME = "reels"
-COLUMN_INDEX = 8        # Cột I chứa link (cột index 8)
+SHEET_CONFIGS = [
+    {
+        "SHEET_NAME": "LiveScience_Raw",
+        "COLUMN_INDEX": 16,
+        "HEADER_HINT": "VideoFB",
+    },
+    {
+        "SHEET_NAME": "reels",
+        "COLUMN_INDEX": 8,
+        "HEADER_HINT": "Link",
+    }
+]
 REFERRER_CODE = "432322"
 
 DIR = os.path.dirname(__file__)
@@ -96,6 +106,15 @@ try:
     print(f"Đã chạy thành công {len(used_links)} link trước đây")
 
     import time as time_mod
+    
+    # Lựa chọn cấu hình luân phiên dựa trên số chẵn/lẻ của len(used_links)
+    config = SHEET_CONFIGS[len(used_links) % 2]
+    SHEET_NAME = config["SHEET_NAME"]
+    COLUMN_INDEX = config["COLUMN_INDEX"]
+    HEADER_HINT = config["HEADER_HINT"]
+    
+    print(f"🔄 LUÂN PHIÊN: Đang chọn sheet '{SHEET_NAME}', tìm cột '{HEADER_HINT}'")
+
     encoded_sheet = urllib.parse.quote_plus(SHEET_NAME)
     # Thêm timestamp t=... để chống cache của Google Sheets (tránh việc vừa nhập data xong tool không nhận diện được ngay)
     csv_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_sheet}&t={int(time_mod.time())}"
@@ -103,21 +122,26 @@ try:
     df = pd.read_csv(csv_url)
     print(f"Đọc sheet thành công - {len(df)} dòng")
 
-    # Cố gắng tìm cột có chữ "Link", nếu không có thì lấy theo COLUMN_INDEX
+    # Cố gắng tìm cột có chữ HEADER_HINT
     matched_col = None
     for col in df.columns:
-        if str(col).strip() == 'Link':
-            matched_col = col
-            break
+        if HEADER_HINT == "Link":
+            if str(col).strip() == "Link":
+                matched_col = col
+                break
+        else:
+            if HEADER_HINT in str(col):
+                matched_col = col
+                break
             
     if matched_col:
         col_i = df[matched_col].dropna().astype(str).str.strip()
     else:
-        # Fallback nếu không có dòng tiêu đề Link, thử lấy cột index 8
+        # Fallback nếu không có dòng tiêu đề, thử lấy cột index
         try:
             col_i = df.iloc[:, COLUMN_INDEX].dropna().astype(str).str.strip()
         except IndexError:
-            raise Exception(f"Không tìm thấy cột Link và sheet cũng không có đủ {COLUMN_INDEX+1} cột!")
+            raise Exception(f"Không tìm thấy cột {HEADER_HINT} và sheet cũng không có đủ {COLUMN_INDEX+1} cột!")
     
     all_links = []
     for val in col_i:
