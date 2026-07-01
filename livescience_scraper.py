@@ -150,6 +150,10 @@ def main():
         print(f"[{i}/{len(links_to_scrape)}] Cào: {link}")
         data = scrape_article(link)
         if data:
+            desc = data['description']
+            if len(desc) > 30000:
+                desc = desc[:30000] + "\n...[TRUNCATED]"
+                
             new_rows.append([
                 data['title'],
                 data['pubdate'],      # Date
@@ -160,7 +164,7 @@ def main():
                 "NEW",                # Status
                 "",                   # TranslatedTitle
                 "",                   # TranslatedContent
-                data['description']   # FullTextEn
+                desc   # FullTextEn
             ])
         time.sleep(0.5)
         
